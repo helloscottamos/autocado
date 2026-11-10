@@ -1,0 +1,58 @@
+{
+  "manifest_version": 2,
+  "name": "Autocado for Ocado",
+  "version": "0.1.0",
+  "description": "Lets your Autocado kitchen app fill your Ocado trolley from your own signed-in Firefox. Never checks out.",
+  "homepage_url": "https://github.com/helloscottamos/autocado",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{93b56d5d-ad41-4bf1-861d-7b21646d12cb}",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "https://www.ocado.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "optional_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.ocado.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_title": "Autocado",
+    "default_popup": "popup.html",
+    "default_icon": "icon.svg"
+  },
+  "options_ui": {
+    "page": "options.html"
+  },
+  "icons": {
+    "48": "icon.svg",
+    "96": "icon.svg"
+  }
+}

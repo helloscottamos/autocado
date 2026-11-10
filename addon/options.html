@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; padding: 12px; max-width: 520px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    input { font: inherit; width: 100%; box-sizing: border-box; padding: 6px 8px; }
+    .row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+    button { font: inherit; padding: 6px 14px; }
+    .muted { color: #6b6b6b; }
+    #msg:empty { display: none; }
+  </style>
+</head>
+<body>
+  <label for="server">Autocado address</label>
+  <input id="server" type="url" placeholder="http://localhost:3456" />
+  <p class="muted">Where your Autocado app runs. On this computer that's <code>http://localhost:3456</code>; on a Raspberry Pi something like <code>http://raspberrypi.local:3456</code>.</p>
+  <div class="row"><button id="save">Save</button><span id="msg"></span></div>
+  <script src="options.js"></script>
+</body>
+</html>

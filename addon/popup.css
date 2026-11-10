@@ -1,0 +1,17 @@
+:root { color-scheme: light dark; --ok: #2e7d32; --bad: #c62828; --warn: #b86e00; --muted: #6b6b6b; }
+body { font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 14px 16px; width: 300px; }
+h1 { font-size: 16px; margin: 0 0 10px; }
+.checks { list-style: none; margin: 0 0 8px; padding: 0; }
+.checks li { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.ok .dot { background: var(--ok); }
+.bad .dot { background: var(--bad); }
+.warn .dot { background: var(--warn); }
+.label { font-weight: 600; }
+.detail { margin-left: auto; color: var(--muted); font-size: 12px; }
+.hint { margin: 6px 0; }
+.hint:empty, .muted:empty { display: none; }
+.muted { color: var(--muted); font-size: 12px; margin: 4px 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid #7fc77a; background: #7fc77a; color: #0d1a0c; cursor: pointer; }
+button.ghost { background: transparent; color: inherit; border-color: #9993; }

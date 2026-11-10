@@ -1,0 +1,40 @@
+{
+  "name": "autocado",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plan the week's meals, tick off what you have, and fill your Ocado trolley automatically. Never checks out.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/helloscottamos/autocado.git"
+  },
+  "homepage": "https://github.com/helloscottamos/autocado#readme",
+  "bugs": {
+    "url": "https://github.com/helloscottamos/autocado/issues"
+  },
+  "type": "module",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "dev": "node --env-file-if-exists=.env --watch server/index.js",
+    "demo": "OCADO_MOCK=1 AUTOCADO_DATA_DIR=data/demo PORT=3457 node --env-file-if-exists=.env server/index.js",
+    "test": "node --test \"test/*.test.js\"",
+    "setup:browser": "playwright install chromium",
+    "addon:lint": "npx --yes web-ext lint --source-dir addon",
+    "addon:run": "npx --yes web-ext run --source-dir addon --start-url https://www.ocado.com/",
+    "addon:build": "npx --yes web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
+    "addon:sign": "npx --yes web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted",
+    "demo:seed": "node scripts/seed-demo.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0",
+    "express": "^5.3.0",
+    "htm": "^3.1.1",
+    "open-supermarkets": "^3.0.0",
+    "playwright": "^1.65.0",
+    "preact": "^11.2.0"
+  }
+}
