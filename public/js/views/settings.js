@@ -28,7 +28,7 @@ export function SettingsView({ state, login, setup, go }) {
       <${ClaudeCard} state=${state} />
       ${!setup ? html`<${PrefsCard} state=${state} />` : null}
 
-      ${setup ? html`<div class="btn-row"><span class="spacer"></span><${Btn} kind="primary" onClick=${finishSetup}>${state.ocado.connected ? 'Continue' : 'Skip for now'} →<//></div>` : html`<${KioskCard} /><${ResetCard} state=${state} go=${go} />`}
+      ${setup ? html`<div class="btn-row"><span class="spacer"></span><${Btn} kind="primary" onClick=${finishSetup}>${state.ocado.connected ? 'Continue' : 'Skip for now'} →<//></div>` : html`<${KioskCard} state=${state} /><${ResetCard} state=${state} go=${go} />`}
     </section>
   `;
 }
@@ -162,10 +162,21 @@ function PrefsCard({ state }) {
   </div>`;
 }
 
-function KioskCard() {
-  return html`<details class="card">
-    <summary><strong>Kitchen screen / Magic Mirror</strong></summary>
-    <p>Open this page on any device on your home network. For a Raspberry Pi kitchen screen, see <code>docs/raspberry-pi.md</code>. Add <code>?theme=dark</code> to the address to force the dark theme (best for a mirror).</p>
+function KioskCard({ state }) {
+  const lan = state.env.lan || {};
+  const [first, ...rest] = lan.urls || [];
+  return html`<details class="card" open=${!!first}>
+    <summary><strong>Phones, tablets & kitchen screen</strong></summary>
+    ${first ? html`
+      <p>On any phone, tablet or computer on your home Wi-Fi, open <a href=${first}><strong>${first.replace(/^http:\/\//, '')}</strong></a>. Add it to the home screen for one tap next time.</p>
+      <${CopyText} text=${first} />
+      ${rest.length ? html`<p class="muted">If a device can't find that, use ${rest.map((u, i) => html`${i ? ' or ' : ''}<a href=${u}>${u.replace(/^http:\/\//, '')}</a>`)}. That number can change when your router restarts.</p>` : null}
+    ` : lan.shared ? html`
+      <p>Autocado is shared on your network, but this computer doesn't seem to be on Wi-Fi or a network right now.</p>
+    ` : html`
+      <p>Only this computer can open Autocado at the moment. To use it from phones on your home Wi-Fi, add <code>HOST=0.0.0.0</code> to the <code>.env</code> file and restart Autocado. It then appears at <strong>autocado.local</strong>.</p>
+    `}
+    <p class="muted">Autocado has no login, so anyone on your Wi-Fi can use it. For a Raspberry Pi kitchen screen, see <code>docs/raspberry-pi.md</code>. Add <code>?theme=dark</code> to the address to force the dark theme (best for a mirror).</p>
   </details>`;
 }
 

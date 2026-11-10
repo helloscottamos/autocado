@@ -89,12 +89,15 @@ Open **http://localhost:3457** for a fake catalogue and trolley with some sample
 
 <img src="docs/images/phone-check.png" alt="Autocado on a phone, asking 'Do we have enough chickpeas?'" width="300" align="right">
 
-By default only the computer running Autocado can open it. To use it from phones on your home Wi-Fi:
+By default only the computer running Autocado can open it. To use it from phones and tablets on your home Wi-Fi:
 
-1. Copy `.env.example` to `.env` and add the line `HOST=0.0.0.0`.
-2. Restart Autocado (Ctrl+C, then `npm start`). The terminal shows the address to open on your phone, such as `http://192.168.1.20:3456`.
+1. Copy `.env.example` to `.env`, and in it change `# HOST=127.0.0.1` to `HOST=0.0.0.0`.
+2. Restart Autocado (Ctrl+C, then `npm start`).
+3. On your phone, open **http://autocado.local** and add it to your home screen.
 
-Autocado has **no login**, so anyone on your Wi-Fi can use it. Don't put it on the internet. To use it away from home, a private network such as [Tailscale](https://tailscale.com) works well.
+If a device can't find `autocado.local`, use the number address that the terminal and **Settings** show, such as `http://192.168.1.20:3456`. The computer needs to be awake with Autocado running.
+
+Autocado has **no login**, so anyone on your Wi-Fi can use it. Don't put it on the internet. To use it away from home, a private network such as [Tailscale](https://tailscale.com) works well. More in [how it works](docs/how-it-works.md#sharing-on-your-home-network).
 
 For a Raspberry Pi kitchen screen or mirror, see [docs/raspberry-pi.md](docs/raspberry-pi.md).
 

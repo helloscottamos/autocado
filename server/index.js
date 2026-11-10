@@ -1,7 +1,7 @@
 // Autocado server: JSON API + live updates (Server-Sent Events) + static UI.
 import express from 'express';
+import http from 'node:http';
 import path from 'node:path';
-import os from 'node:os';
 import { store, newId } from './store.js';
 import { forgetAll as forgetCatalogue } from './catalogue.js';
 import { itemKey, parseIngredientLine, isPantry } from './ingredients.js';
@@ -13,10 +13,15 @@ import { Bridge, BridgeOcado } from './ocado/bridge.js';
 import { OcadoRouter } from './ocado/router.js';
 import { LoginManager } from './ocado/login.js';
 import { OcadoError } from './ocado/errors.js';
+import { advertiseName, cleanName, ownAddresses } from './lan-name.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PORT = Number(process.env.PORT || 3456);
 const HOST = process.env.HOST || '127.0.0.1';
+// Reachable from other devices on the network (phones, the kitchen screen)?
+const SHARED = !['127.0.0.1', 'localhost', '::1'].includes(HOST);
+// Its name on the network: http://autocado.local (AUTOCADO_NAME=off to skip).
+const NAME = SHARED ? cleanName(process.env.AUTOCADO_NAME) : null;
 const MOCK = /^(1|true|yes)$/i.test(process.env.OCADO_MOCK || '');
 // A visible browser window is the most reliable way past Ocado's bot check,
 // but a headless Pi (no screen) can't show one.
@@ -65,6 +70,7 @@ function publicState() {
       login: login.state,
       bridge: { ...bridge.status(), addonPath: path.join(ADDON_DIR, 'manifest.json') },
       via: ocado.via ?? (MOCK ? 'demo' : 'server'),
+      lan: { shared: SHARED, urls: lanUrls() },
     },
   };
 }
@@ -659,13 +665,47 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 // ------------------------------------------------------------------ start --
 
 const server = app.listen(PORT, HOST, async () => {
-  const addrs = HOST === '0.0.0.0'
-    ? Object.values(os.networkInterfaces()).flat().filter(a => a && a.family === 'IPv4' && !a.internal).map(a => `http://${a.address}:${PORT}`)
-    : [];
-  console.log(`Autocado running at http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}${MOCK ? '  (DEMO MODE — fake Ocado)' : ''}`);
-  for (const a of addrs) console.log(`  on your network: ${a}`);
+  console.log(`Autocado running at http://${SHARED ? 'localhost' : HOST}:${PORT}${MOCK ? '  (DEMO MODE — fake Ocado)' : ''}`);
+  if (SHARED) startSharing().catch(e => console.log(`  Couldn't set up the network address: ${e.message}`));
   await refreshOcadoStatus();
 });
+
+// ---- sharing on the home network
+
+const lan = { host: null, port80: PORT === 80, name: null };
+
+/** Addresses other devices can open, friendliest first. */
+function lanUrls() {
+  if (!SHARED) return [];
+  const urls = [];
+  if (lan.host) urls.push(`http://${lan.host}${lan.port80 ? '' : `:${PORT}`}`);
+  for (const a of ownAddresses()) urls.push(`http://${a.address}:${PORT}`);
+  return urls;
+}
+
+async function startSharing() {
+  // Also answer on port 80, the web's default, so the address needs no ":3456".
+  // Optional: skipped if something else has port 80 or it needs admin rights (Linux).
+  const port80 = lan.port80 ? Promise.resolve(true) : new Promise(resolve => {
+    const s = http.createServer(app);
+    s.once('listening', () => resolve(true));
+    s.once('error', () => resolve(false));
+    s.listen(80, HOST);
+  });
+  let settled = false;
+  const named = !NAME ? Promise.resolve(null) : new Promise(resolve => {
+    lan.name = advertiseName(NAME, {
+      onReady: ({ host }) => { settled = true; resolve(host); },
+      onTaken: ip => { settled = true; console.log(`  ${NAME}.local is already used by another device (${ip}). Set AUTOCADO_NAME in .env to choose another name.`); resolve(null); },
+      onError: e => { if (!settled) { settled = true; console.log(`  Couldn't set up ${NAME}.local: ${e.message}`); resolve(null); } },
+    });
+  });
+  [lan.port80, lan.host] = await Promise.all([port80, named]);
+  const [first, ...rest] = lanUrls();
+  if (first) console.log(`  On your phone or tablet: ${first}`);
+  for (const u of rest) console.log(`                      or: ${u}`);
+  broadcast('state', {});
+}
 
 // Keep deals fresh for the kitchen screen: check favourites every 6 hours.
 setInterval(() => {
@@ -674,4 +714,4 @@ setInterval(() => {
   if (s.ocado.connected && stale && Object.keys(s.favourites).length) refreshFavourites().catch(() => {});
 }, 30 * 60_000).unref();
 
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, async () => { await login.cancel().catch(() => {}); server.close(); process.exit(0); });
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, async () => { lan.name?.stop(); await login.cancel().catch(() => {}); server.close(); process.exit(0); });

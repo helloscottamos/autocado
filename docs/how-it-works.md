@@ -64,11 +64,22 @@ Copy `.env.example` to `.env`.
 | Variable | Default | |
 |---|---|---|
 | `PORT` | `3456` | |
-| `HOST` | `127.0.0.1` | `0.0.0.0` lets phones on your Wi-Fi connect. There's no login, so only do this on a home network you trust. |
+| `HOST` | `127.0.0.1` | `0.0.0.0` lets phones on your Wi-Fi connect (see below). There's no login, so only do this on a home network you trust. |
+| `AUTOCADO_NAME` | `autocado` | The name on your network: `kitchen` gives `http://kitchen.local`. `off` switches it off. |
 | `ANTHROPIC_API_KEY` | none | Optional; can also be set in Settings. |
 | `AUTOCADO_MODEL` | `claude-opus-5-5` | |
 | `AUTOCADO_DATA_DIR` | `./data` | Where your data lives. |
 | `OCADO_MOCK` | off | `1` = demo mode (fake Ocado). |
+
+## Sharing on your home network
+
+With `HOST=0.0.0.0`:
+
+- **Autocado answers to `autocado.local`.** Phones, tablets and computers find `.local` names by asking the network (multicast DNS, which Apple calls Bonjour), and Autocado replies with this computer's address. There's no router setup, and it keeps working when the router hands out a new address. If another device already uses the name, the terminal says so; pick another with `AUTOCADO_NAME`.
+- **It also listens on port 80**, the web's default, so the address needs no `:3456`. On a Mac that just works. On Linux it needs permission, which the Raspberry Pi service file grants. Without it, the address is `http://autocado.local:3456`.
+- The terminal and **Settings → Phones, tablets & kitchen screen** list every address that works.
+- The Firefox add-on carries on using `localhost:3456` on the same computer.
+- There's no login: anyone on your Wi-Fi can use it. Don't forward it to the internet from your router.
 
 ## Your data
 
@@ -101,6 +112,7 @@ server/
   shopping.js         shopping list builder, product matching, trolley top-up
   ingredients.js      ingredient parsing, item names, pack maths
   recipes-import.js   photo / text / URL / book import (Claude + schema.org)
+  lan-name.js         autocado.local on your home network (multicast DNS)
   ocado/router.js     picks the Firefox add-on or Autocado's own sign-in
   ocado/bridge.js     Firefox add-on bridge (requests run in your ocado.com tab)
   ocado/real.js       Autocado's own sign-in, on top of open-supermarkets

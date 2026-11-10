@@ -34,7 +34,7 @@ rsync -av --exclude demo ./data/ pi@raspberrypi.local:/home/pi/autocado/data/
 
 ## 3. Connecting to Ocado from the Pi
 
-The Firefox add-on is the reliable way. On the computer where you use Firefox, click the add-on's 🥑 button → **Change Autocado address…** and enter the Pi's address, e.g. `http://raspberrypi.local:3456`. Firefox needs to be open somewhere when Autocado fills the trolley.
+The Firefox add-on is the reliable way. On the computer where you use Firefox, click the add-on's 🥑 button → **Change Autocado address…** and enter the Pi's address: `http://autocado.local`. Firefox needs to be open somewhere when Autocado fills the trolley.
 
 Autocado's own sign-in also works on the Pi as a fallback. **Paste cookies** in Settings needs nothing extra. The browser-based sign-in methods need Chromium:
 
@@ -52,7 +52,9 @@ sudo cp deploy/autocado.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now autocado
 ```
 
-The unit sets `HOST=0.0.0.0`, so you can reach it from your phone at `http://raspberrypi.local:3456`. There's no login on the app; keep it on your home network.
+The unit sets `HOST=0.0.0.0` and lets Autocado use port 80, so you can reach it from your phone at **http://autocado.local**. There's no login on the app; keep it on your home network.
+
+**Moving from another computer?** Stop Autocado there first (or remove `HOST=0.0.0.0` from its `.env`). Otherwise it keeps the `autocado.local` name and the Pi's log says the name is taken.
 
 ## 5. Show it on the mirror
 
