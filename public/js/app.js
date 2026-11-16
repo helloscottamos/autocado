@@ -2,6 +2,7 @@ import { html, render } from 'htm/preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useLiveState } from './api.js';
 import { Toasts, botCheckActive } from './ui.js';
+import { OrderCheckBanner, useOrderWatch } from './journey.js';
 import { WeekView } from './views/week.js';
 import { NeededView } from './views/needed.js';
 import { BasketView } from './views/basket.js';
@@ -45,6 +46,7 @@ function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
   useEffect(applyTheme, []);
+  useOrderWatch(state);
 
   if (!state) {
     return html`<div class="boot">${online ? 'Loading…' : 'Cannot reach the Autocado server. Retrying…'}</div>`;
@@ -76,6 +78,7 @@ function App() {
       </header>
 
       ${!online ? html`<div class="banner banner-error">Lost connection to the Autocado server — reconnecting…</div>` : null}
+      <${OrderCheckBanner} state=${state} />
 
       <nav class="tabs" aria-label="Sections">
         ${TABS.map(t => html`<a href=${`#/${t.id}`} class=${`tab ${view === t.id ? 'on' : ''}`} aria-current=${view === t.id ? 'page' : undefined}>

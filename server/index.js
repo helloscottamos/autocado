@@ -6,6 +6,7 @@ import { store, newId } from './store.js';
 import { forgetAll as forgetCatalogue } from './catalogue.js';
 import { itemKey, parseIngredientLine, isPantry } from './ingredients.js';
 import { buildList, buildDraft, draftTotal, planTrolleyAdds } from './shopping.js';
+import * as weeks from './weeks.js';
 import * as importer from './recipes-import.js';
 import { RealOcado } from './ocado/real.js';
 import { MockOcado } from './ocado/mock.js';
@@ -37,6 +38,9 @@ const login = new LoginManager(async (cookies, csrf) => {
   await refreshOcadoStatus({ freshSignIn: true });
 });
 
+// Data from before weeks existed: start the first week (see weeks.js).
+if (!store.get().currentWeek) store.update(s => weeks.migrate(s));
+
 // ---------------------------------------------------------------- helpers --
 
 const jobs = { draft: null, send: null, deals: null };
@@ -57,6 +61,8 @@ function publicState() {
     lists: { weekly: buildList(s, 'weekly'), topup: buildList(s, 'topup') },
     draftTotal: draftTotal(s.draft),
     trolley: trolleyCache,
+    week: { status: weeks.weekStatus(s), openShop: weeks.openShop(s), canUndo: weeks.canUndoOrdered(s), lastHad: weeks.lastHad(s) },
+    lastOrdered: s.lastOrdered ? { ...s.lastOrdered, restore: undefined } : null,
     env: {
       mock: MOCK,
       claude: importer.claudeAvailable(),
@@ -299,6 +305,7 @@ app.post('/api/ocado/cookies', route(async req => {
 }));
 
 app.post('/api/ocado/logout', route(async req => {
+  ownEmptyAt = Date.now();
   await ocado.logout();
   forgetTrolley();
   if (req.body?.forget) { store.setSecret('ocadoPassword', null); store.setSecret('ocadoEmail', null); }
@@ -317,6 +324,8 @@ app.get('/api/ocado/search', route(async req => {
 
 let trolleyCache = null; // { items, total, count, fetchedAt }
 let trolleyInFlight = null;
+let lastFullTrolley = null; // { count, total } the last time the trolley had something in it
+let ownEmptyAt = 0;         // when Autocado itself last emptied or reduced the trolley
 
 /** Read the real trolley from Ocado and push it to every open screen. */
 async function fetchTrolley({ force = false } = {}) {
@@ -326,9 +335,28 @@ async function fetchTrolley({ force = false } = {}) {
     const t = await ocado.trolley();
     trolleyCache = { ...t, count: t.items.reduce((n, i) => n + i.quantity, 0), fetchedAt: new Date().toISOString() };
     broadcast('trolley', trolleyCache);
+    checkForOrder(trolleyCache);
     return trolleyCache;
   })().finally(() => { trolleyInFlight = null; });
   return trolleyInFlight;
+}
+
+/**
+ * Ocado empties the trolley when an order goes through. If a shop was waiting
+ * and the trolley is now empty (and Autocado didn't empty it), ask on every
+ * screen whether the order was placed.
+ */
+function checkForOrder(t) {
+  if (t.count > 0) {
+    lastFullTrolley = { count: t.count, total: t.total };
+    ownEmptyAt = 0; // refilled since Autocado last emptied it, so an empty trolley now means something else
+  }
+  const s = store.get();
+  if (!weeks.looksCheckedOut(s, t, { ownEmptyAt })) return;
+  const shop = weeks.openShop(s);
+  store.update(st => {
+    st.orderCheck = { at: new Date().toISOString(), shopId: shop.id, count: lastFullTrolley?.count ?? null, total: lastFullTrolley?.total ?? shop.estimate ?? null };
+  });
 }
 
 function forgetTrolley() {
@@ -360,17 +388,29 @@ app.post('/api/ocado/trolley/quantity', route(async req => {
   const { productId } = req.body;
   const quantity = Math.max(0, Math.min(48, Math.round(Number(req.body.quantity))));
   if (!productId || !Number.isFinite(quantity)) throw bad('Missing product or quantity.');
+  if (quantity < qtyIn(trolleyCache, productId)) ownEmptyAt = Date.now();
   await ocado.setTrolleyQuantity(productId, quantity);
   const { trolley, confirmed } = await confirmTrolley(t => qtyIn(t, productId) === quantity);
   if (!confirmed) throw new OcadoError('BLOCKED', NOT_APPLIED);
+  if (!trolley.items.length && weeks.openShop(store.get())) store.update(s => weeks.markNotOrdered(s)); // emptied here: nothing waiting now
   return trolley;
 }));
 
 app.post('/api/ocado/trolley/clear', route(async () => {
+  ownEmptyAt = Date.now();
   await ocado.clearTrolley();
   const { trolley, confirmed } = await confirmTrolley(t => t.items.length === 0);
   if (!confirmed) throw new OcadoError('BLOCKED', NOT_APPLIED);
+  if (weeks.openShop(store.get())) store.update(s => weeks.markNotOrdered(s)); // emptied here: nothing waiting now
   return trolley;
+}));
+
+// Demo mode only: pretend to check out on Ocado (the trolley empties, as it
+// does when a real order goes through), to try Autocado noticing the order.
+app.post('/api/ocado/demo-checkout', route(async () => {
+  if (!MOCK) throw notFound('Only available in demo mode.');
+  ocado.trolleyItems.clear();
+  return fetchTrolley({ force: true });
 }));
 
 // ---- Recipes
@@ -440,6 +480,30 @@ app.post('/api/checks', route(req => {
 }));
 
 app.post('/api/checks/reset', route(() => store.update(s => { s.checks = {}; })));
+
+// ---- Weeks: the order was placed on Ocado (see weeks.js)
+
+app.post('/api/weeks/ordered', route(req => {
+  const how = req.body.how === 'detected' ? 'detected' : 'you';
+  const check = store.get().orderCheck;
+  const trolley = check?.count ? { count: check.count, total: check.total } : (trolleyCache?.count ? { count: trolleyCache.count, total: trolleyCache.total } : lastFullTrolley);
+  const r = store.update(s => weeks.markOrdered(s, { how, trolley }));
+  return { closedWeek: r.closedWeek, kind: r.kind, total: r.total };
+}));
+
+app.post('/api/weeks/not-ordered', route(() => { store.update(s => weeks.markNotOrdered(s)); }));
+
+app.post('/api/weeks/undo', route(() => {
+  if (!store.update(s => weeks.undoOrdered(s))) throw bad('That can no longer be undone: the new week has already started.');
+}));
+
+app.post('/api/weeks/ack', route(() => store.update(s => { s.lastOrdered = null; })));
+
+app.post('/api/weeks/:id/repeat', route(req => {
+  const r = store.update(s => weeks.repeatWeek(s, req.params.id));
+  if (!r) throw notFound('That week is no longer in the list.');
+  return r;
+}));
 
 // ---- Needed items (ran out / ad-hoc top-up)
 
@@ -593,6 +657,7 @@ app.post('/api/draft/send', route(async req => {
   jobs.send = (async () => {
     if (req.body.clearFirst) {
       setProgress('send', { done: 0, total: 1, message: 'Emptying the Ocado trolley…' });
+      ownEmptyAt = Date.now();
       await ocado.clearTrolley();
     }
     setProgress('send', { done: 0, total: 1, message: 'Reading your Ocado trolley…' });
@@ -638,8 +703,13 @@ app.post('/api/draft/send', route(async req => {
         if (okKeys.has(l.key) && l.product) s.productChoices[l.key] = { ...l.product, chosenAt: s.productChoices[l.key]?.chosenAt || at };
       }
       s.required = s.required.filter(r => !okKeys.has(itemKey(r.item)));
-      // Pantry answers were for this shop; next week starts fresh.
-      if (s.draft.mode === 'weekly') s.checks = {};
+      // The week's shop now waits in the trolley until the order is placed on Ocado.
+      // (Cupboard answers stay until then: weeks.markOrdered starts the next week fresh.)
+      if (req.body.clearFirst) weeks.markNotOrdered(s); // the old trolley was emptied first
+      weeks.recordSend(s, {
+        kind: s.draft.mode, at,
+        lines: s.draft.lines.filter(l => okKeys.has(l.key) && l.product).map(l => ({ item: l.item, name: l.product.name, productId: l.product.productId, packs: l.packs, price: l.product.price ?? null })),
+      });
       s.history.unshift({
         id: newId(), at, mode: s.draft.mode, added,
         lines: s.draft.lines.map(l => ({ item: l.item, name: l.product?.name ?? null, productId: l.product?.productId ?? null, packs: l.packs, status: l.status, note: l.note ?? null, error: l.error })),
@@ -706,6 +776,13 @@ async function startSharing() {
   for (const u of rest) console.log(`                      or: ${u}`);
   broadcast('state', {});
 }
+
+// While a shop waits in the trolley, look at the trolley every 15 minutes so
+// Autocado notices the order even if nobody opens it after checking out.
+setInterval(() => {
+  const s = store.get();
+  if (s.ocado.connected && weeks.openShop(s) && !s.orderCheck) fetchTrolley({ force: true }).catch(() => {});
+}, 15 * 60_000).unref();
 
 // Keep deals fresh for the kitchen screen: check favourites every 6 hours.
 setInterval(() => {

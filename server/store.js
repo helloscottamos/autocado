@@ -27,6 +27,10 @@ export function emptyState() {
     favourites: {},      // productId -> product snapshot (+ offers)
     draft: null,         // the matched basket being reviewed before it's sent
     history: [],         // what was sent to the trolley, newest first
+    currentWeek: { id: newId(), startedAt: new Date().toISOString(), shops: [] }, // see weeks.js
+    pastWeeks: [],       // ordered weeks, newest first
+    orderCheck: null,    // the trolley emptied while a shop was waiting: "did you place the order?"
+    lastOrdered: null,   // the last order marked, for the "Ordered" banner and Undo
     ocado: { connected: false, lastError: null, checkedAt: null },
     dealsCheckedAt: null,
   };
@@ -51,7 +55,8 @@ class Store extends EventEmitter {
       const raw = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
       // Merge onto defaults so new fields appear after upgrades.
       const base = emptyState();
-      return { ...base, ...raw, settings: { ...base.settings, ...raw.settings }, plan: { ...base.plan, ...raw.plan } };
+      // currentWeek stays missing on older data, so weeks.migrate() can build it from the send history.
+      return { ...base, ...raw, currentWeek: raw.currentWeek ?? null, settings: { ...base.settings, ...raw.settings }, plan: { ...base.plan, ...raw.plan } };
     } catch (e) {
       if (e.code !== 'ENOENT') {
         // Keep a copy of an unreadable file rather than silently overwriting it.

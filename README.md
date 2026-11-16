@@ -8,10 +8,11 @@
 
 ## What it does
 
-- **This week:** tap the recipes you're cooking. The shopping list updates as you go and adds up amounts across recipes ("400g + 800g chopped tomatoes").
+- **This week:** tap the recipes you're cooking (or search them by name or ingredient), then check the cupboard. The shopping list adds up amounts across recipes ("400g + 800g chopped tomatoes"). A step bar shows where you are, from recipes to checkout.
 - **Got it / Buy:** answer for each ingredient, or go one big question at a time while standing at the fridge. Cupboard staples like salt and oil default to "got it".
 - **Needed:** note anything that's run out. It goes into the next shop.
 - **Basket:** matches every item to an Ocado product (your usual, then a favourite, then organic). Swap anything you like, then it fills your real Ocado trolley, adding only what isn't already there. It also shows what's in your trolley right now.
+- **Weeks:** Autocado notices when you've checked out on Ocado and files the week, with what you cooked and bought. Shop a past week again, then swap meals in and out to keep it varied.
 - **Favourites:** star products and see which ones are on offer.
 - **Recipes:** add them from a web link, pasted text, a photo of a cookbook page, or by typing.
 - **Any screen:** laptop, phone, tablet or kitchen mirror. Every open screen updates live.
@@ -63,9 +64,9 @@ Check the **Search for** column: that's what gets looked up on Ocado, so keep it
 
 ### 5. Do your first shop
 
-1. **This week:** tap the recipes you're cooking.
+1. **This week:** tap the recipes you're cooking, then **Check the cupboard**.
 2. Tap **Check what we have** and answer each question.
-3. **Basket → Find products on Ocado.** Look over the matches and tap **Swap** for anything you'd change.
+3. **Find products on Ocado.** Look over the matches and tap **Swap** for anything you'd change.
 4. Tap **Add to Ocado trolley**.
 5. Open Ocado, check the trolley, book a delivery slot and pay as normal.
 
