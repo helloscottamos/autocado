@@ -77,3 +77,55 @@ test('reads the product-info API\'s shape: prices, pence, price cuts, badges', a
   assert.equal(multi.wasPrice, null);
   assert.equal(multi.organic, true);
 });
+
+test('past Ocado\'s first 300, the rest are read a page at a time', async () => {
+  const html = page({ ids: range(0, FAVOURITES_PAGE_MAX), detailed: range(0, 50) });
+  const pages = [];
+  const fetchPage = async token => {
+    pages.push(token);
+    if (!token) return { ids: range(0, 300).map(n => `id-${n}`), products: [], nextPageToken: 'p2' };
+    if (token === 'p2') return { ids: range(300, 358).map(n => `id-${n}`), products: [{ productId: 'id-300', name: 'Product 300' }], nextPageToken: null };
+    throw new Error(`unexpected token ${token}`);
+  };
+  const fetched = [];
+  const list = await readFavourites(html, extractProductEntities, async ids => { fetched.push(...ids); return ids.map(id => ({ productId: id, name: id })); }, fetchPage);
+  assert.deepEqual(pages, [null, 'p2']);
+  assert.equal(list.length, 358);
+  assert.equal(list.at(-1).productId, 'id-357');
+  assert.ok(!fetched.includes('id-300'), 'a page\'s own details are used');
+  assert.equal(list.complete, true, 'so favourites removed on Ocado can be dropped');
+  assert.equal(list.warning, null);
+});
+
+test('a page token on the /favorites page itself is used', async () => {
+  const html = page({ ids: range(0, FAVOURITES_PAGE_MAX), detailed: range(0, 50) }).replace('</script>', '<!-- "nextPageToken":"abc" --></script>');
+  const pages = [];
+  const list = await readFavourites(html, extractProductEntities, async ids => ids.map(id => ({ productId: id, name: id })),
+    async token => { pages.push(token); return { ids: ['id-400'], products: [], nextPageToken: null }; });
+  assert.deepEqual(pages, ['abc']);
+  assert.equal(list.length, 301);
+});
+
+test('an add-on that refuses the paging request keeps the first 300 and says what to do', async () => {
+  const list = await readFavourites(page({ ids: range(0, FAVOURITES_PAGE_MAX), detailed: range(0, 50) }), extractProductEntities,
+    async ids => ids.map(id => ({ productId: id, name: id })),
+    async () => { throw new Error('Firefox add-on: Autocado add-on refused a request it does not allow: GET /api/x'); });
+  assert.equal(list.length, 300);
+  assert.equal(list.complete, false);
+  assert.match(list.warning, /first 300 .*reload the Autocado add-on/);
+});
+
+test('reads a page of the favourites API in either shape', async () => {
+  const { favouritesPage } = await import('../server/ocado/normalise.js');
+  const raw = favouritesPage({
+    productGroups: [{ type: 'favorite', decoratedProducts: [{ productId: 'b', name: 'Bread', price: { amount: '1.40', currency: 'GBP' } }], otherProductIds: ['a', 'c'] }],
+    metadata: { nextPageToken: 't2' },
+  });
+  assert.deepEqual(raw.ids, ['b', 'a', 'c']);
+  assert.deepEqual(raw.products.map(p => [p.name, p.price]), [['Bread', 1.4]]);
+  assert.equal(raw.nextPageToken, 't2');
+  const last = favouritesPage({ productGroups: [{ type: 'favorite', decoratedProducts: [], otherProductIds: ['z'] }], metadata: {} });
+  assert.deepEqual([last.ids, last.nextPageToken], [['z'], null]);
+  const stored = favouritesPage({ entities: { product: { a: { productId: 'a', name: 'Apples' } } }, result: { productGroups: [{ products: ['a'] }] } });
+  assert.deepEqual([stored.ids, stored.products[0].name, stored.nextPageToken], [['a'], 'Apples', null]);
+});

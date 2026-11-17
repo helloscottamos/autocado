@@ -15,6 +15,7 @@ const ALLOWED = [
   ['GET', /^\/api\/customer\/v3\/customers\/current$/],
   ['GET', /^\/search\?q=[^&]*$/],
   ['GET', /^\/favorites$/],
+  ['GET', /^\/api\/webproductpagews\/v6\/product-pages\/favorites\?[A-Za-z0-9_.~%=&-]*$/],
 ];
 
 // In Firefox, content.fetch runs as the page itself (same origin, page cookies).

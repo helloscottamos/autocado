@@ -13,10 +13,10 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { productsFromHtml, normaliseEntity, readFavourites } from './normalise.js';
+import { productsFromHtml, normaliseEntity, readFavourites, favouritesPage } from './normalise.js';
 import { OcadoError, classifyError } from './errors.js';
 import { remember, known } from '../catalogue.js';
-import { CART_URL, PRODUCTS_URL, CUSTOMER_URL, FAVOURITES_URL, BASE_URL, cartLines, mapCart } from './cart.js';
+import { CART_URL, PRODUCTS_URL, CUSTOMER_URL, FAVOURITES_URL, FAVOURITES_PAGE_API, BASE_URL, cartLines, mapCart } from './cart.js';
 
 const require = createRequire(import.meta.url);
 const { OcadoProvider, extractProductEntities, importSession } = require('open-supermarkets/dist/providers/ocado.js');
@@ -163,7 +163,17 @@ export class RealOcado {
       this.loggedIn = false;
       throw new OcadoError('SESSION_EXPIRED', 'Could not read Ocado favourites — session has probably expired.');
     }
-    return remember(await readFavourites(html, extractProductEntities, ids => this.products(ids)));
+    return remember(await readFavourites(html, extractProductEntities, ids => this.products(ids), token => this.#favouritesPage(token)));
+  }
+
+  async #favouritesPage(token) {
+    let res;
+    try {
+      res = await this.provider.client.get(FAVOURITES_PAGE_API(token), { headers: { Accept: 'application/json', ...WEB }, validateStatus: () => true });
+    } catch (e) { throw classifyError(e); }
+    if (res.status === 202) throw new OcadoError('BLOCKED', BOT_CHECK);
+    if (res.status !== 200 || typeof res.data !== 'object') throw new OcadoError('UNKNOWN', `Ocado answered HTTP ${res.status}.`);
+    return favouritesPage(res.data);
   }
 
   /**

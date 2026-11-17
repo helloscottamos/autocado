@@ -111,7 +111,7 @@ Nothing is sent anywhere except Ocado and, if you've added a key, Anthropic (onl
 - **No checkout or slot booking, by design.** You do those on Ocado.
 - **Unofficial.** Ocado can change its site at any time. If something breaks, update (`git pull && npm install`) and [open an issue](https://github.com/helloscottamos/autocado/issues). Autocado's Ocado code lives in `server/ocado/`.
 - **No login.** Keep Autocado on your home network.
-- Only the first page of your Ocado favourites is read (typically several dozen products).
+- An add-on older than 0.1.1 can only read your first 300 Ocado favourites. To read them all, reload it in Firefox (`about:debugging#/runtime/this-firefox` → **Reload**) or install the latest one.
 - Favourites syncing and deal detection have had less real-world use than the trolley. If starring a product fails, it's still saved in Autocado as "Only saved here".
 
 ## Project layout

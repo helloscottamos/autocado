@@ -11,6 +11,15 @@ export const CUSTOMER_URL = '/api/customer/v3/customers/current';
 export const FAVOURITES_URL = id => `/api/customer-favorites/v1/customers/favorites/${encodeURIComponent(id)}`;
 export const SEARCH_URL = q => `/search?q=${encodeURIComponent(q)}`;
 export const FAVOURITES_PAGE = '/favorites';
+// The favourites list as Ocado's web app pages through it (300 a page, the
+// first 50 of each with full details). The first page has no token.
+export const FAVOURITES_PAGE_API = pageToken => `/api/webproductpagews/v6/product-pages/favorites?${new URLSearchParams({
+  ...(pageToken ? { pageToken } : {}),
+  tag: 'web',
+  includeAdditionalPageInfo: String(!pageToken),
+  maxProductsToDecorate: '50',
+  maxPageSize: '300',
+})}`;
 
 const num = v => { const n = parseFloat(String(v ?? '')); return Number.isFinite(n) ? n : null; };
 const round = n => Math.round(n * 100) / 100;

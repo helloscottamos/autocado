@@ -177,8 +177,8 @@ export const FAVOURITES_PAGE_MAX = 300;
  * for only the first 50 of them in `productEntities`, and draws tiles for just
  * the first few. So read the id list, and say which ids still need details.
  *
- * Returns { ids, products, missing, complete }: `complete` is false when the
- * list looks cut off at Ocado's limit, so there may be more favourites.
+ * Returns { ids, products, missing, complete, nextPageToken }: `complete` is
+ * false when the list looks cut off at Ocado's limit, so there may be more.
  */
 export function favouritesFromHtml(html, extractProductEntities) {
   const entities = Object.values(extractProductEntities(html)).filter(e => e?.productId && e.name);
@@ -201,23 +201,84 @@ export function favouritesFromHtml(html, extractProductEntities) {
     products: ids.filter(id => byId.has(id)).map(id => normaliseEntity(byId.get(id))),
     missing: ids.filter(id => !byId.has(id)),
     complete: ids.length < FAVOURITES_PAGE_MAX,
+    nextPageToken: /"nextPageToken":"([^"\\]+)"/.exec(html)?.[1] ?? null,
   };
 }
 
 /**
- * Every favourite on the /favorites page, in Ocado's order, with details
- * fetched (`fetchProducts(ids)`) for the ones the page left out. The list
- * carries `complete` (false if it may be missing some) and `warning`.
+ * One page of Ocado's favourites API (GET .../product-pages/favorites):
+ * { ids, products, nextPageToken }. Verified against live ocado.com 2026-11-17:
+ *   productGroups[{ type: 'favorite', decoratedProducts: [50 full products],
+ *                   otherProductIds: [250 ids] }]
+ *   metadata: { nextPageToken }   (absent on the last page)
+ * Also reads a plain `products` list and the shape Ocado's web app stores it in.
  */
-export async function readFavourites(html, extractProductEntities, fetchProducts) {
-  const { ids, products, missing, complete } = favouritesFromHtml(html, extractProductEntities);
-  let more = [];
-  let warning = null;
-  if (missing.length) {
-    try { more = await fetchProducts(missing); } catch (e) { warning = `Only read ${products.length} of your Ocado favourites: ${e.message}`; }
+export function favouritesPage(json) {
+  const root = json?.result ?? json ?? {};
+  const groups = root.productGroups ?? json?.productGroups ?? [];
+  const group = groups.find(g => g?.type === 'favorite') ?? groups[0];
+  const entities = Object.values(json?.entities?.product ?? {});
+  const ids = [];
+  for (const p of [...(group?.decoratedProducts ?? []), ...(group?.products ?? []), ...(group?.otherProductIds ?? [])]) {
+    const id = typeof p === 'string' ? p : p?.productId;
+    if (id) ids.push(id);
+    if (p && typeof p === 'object' && p.name) entities.push(p);
   }
-  const byId = new Map([...products, ...more].map(p => [p.productId, p]));
-  const list = ids.map(id => byId.get(id)).filter(Boolean).map(p => ({ ...p, favourite: true }));
+  const byId = new Map(entities.filter(e => e?.productId && e.name).map(e => [e.productId, e]));
+  return {
+    ids: [...new Set(ids)],
+    products: [...byId.values()].map(normaliseEntity),
+    nextPageToken: json?.metadata?.nextPageToken ?? json?.nextPageToken ?? root.nextPageToken ?? null,
+  };
+}
+
+/** Most extra pages of favourites to read (300 each). */
+const MAX_FAVOURITE_PAGES = 10;
+
+/**
+ * Every favourite, in Ocado's order. The /favorites page gives the first 300;
+ * `fetchPage(token)` (optional) reads the rest a page at a time, the way
+ * Ocado's site does as you scroll; `fetchProducts(ids)` fills in details for
+ * the ones Ocado left out. The list carries `complete` (false if it may be
+ * missing some) and `warning`.
+ */
+export async function readFavourites(html, extractProductEntities, fetchProducts, fetchPage = null) {
+  const first = favouritesFromHtml(html, extractProductEntities);
+  const ids = [...first.ids];
+  const seen = new Set(ids);
+  const details = new Map(first.products.map(p => [p.productId, p]));
+  const absorb = page => {
+    for (const id of page.ids) if (!seen.has(id)) { seen.add(id); ids.push(id); }
+    for (const p of page.products) if (!details.has(p.productId)) details.set(p.productId, p);
+  };
+  let complete = first.complete;
+  let warning = null;
+
+  if (!complete && fetchPage) {
+    try {
+      let token = first.nextPageToken;
+      if (!token) { const top = await fetchPage(null); absorb(top); token = top.nextPageToken; }
+      for (let n = 0; token && n < MAX_FAVOURITE_PAGES; n++) {
+        const page = await fetchPage(token);
+        absorb(page);
+        token = page.nextPageToken && page.nextPageToken !== token ? page.nextPageToken : null;
+      }
+      complete = !token;
+    } catch (e) {
+      const why = /refused a request it does not allow/.test(e.message)
+        ? 'reload the Autocado add-on in Firefox (about:debugging) to read the rest'
+        : e.message;
+      warning = `Only read the first ${ids.length} of your Ocado favourites: ${why}`;
+    }
+  }
+
+  const missing = ids.filter(id => !details.has(id));
+  if (missing.length) {
+    try {
+      for (const p of await fetchProducts(missing)) details.set(p.productId, p);
+    } catch (e) { warning = warning || `Only read ${details.size} of your Ocado favourites: ${e.message}`; }
+  }
+  const list = ids.map(id => details.get(id)).filter(Boolean).map(p => ({ ...p, favourite: true }));
   list.complete = complete && list.length === ids.length;
   list.warning = warning;
   return list;

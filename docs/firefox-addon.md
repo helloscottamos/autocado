@@ -56,6 +56,7 @@ The add-on is a messenger. It only carries out these Ocado requests, and refuses
 | `PUT` / `DELETE /api/customer-favorites/v1/customers/favorites/{id}` | Starring and un-starring favourites |
 | `GET /search?q=…` | Product search |
 | `GET /favorites` | Reading your favourites |
+| `GET /api/webproductpagews/v6/product-pages/favorites` | Reading favourites past the first 300, a page at a time |
 
 There's no checkout, slot booking or payment, and none of those paths are allowed. It sends nothing anywhere except your own Autocado app and ocado.com.
 
