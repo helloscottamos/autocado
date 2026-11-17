@@ -66,6 +66,13 @@ function AddRecipe({ claude, onClose, onReady }) {
       setImages(prev => [...prev, ...out].slice(0, 4));
     } catch (e) { toastError(e); }
   };
+  // Two pickers: on phones, `capture` opens the camera straight away and skips
+  // the photo library, so "Choose photos" leaves it off.
+  const pickPhotos = e => {
+    const files = [...e.currentTarget.files];
+    e.currentTarget.value = ''; // so picking the same photo again still counts
+    addPhotos(files);
+  };
 
   const run = async () => {
     setBusy(true);
@@ -94,10 +101,15 @@ function AddRecipe({ claude, onClose, onReady }) {
     ${needsClaude ? html`<div class="banner banner-warn"><span>Reading photos and books needs a Claude API key.</span><a class="btn btn-small btn-secondary" href="#/settings">Add key</a></div>` : null}
 
     ${how === 'photo' ? html`<div class="stack">
-      <p class="muted">Take a photo of the cookbook page (or a few, if it runs over). Claude reads the ingredients.</p>
-      <label class="btn btn-secondary file-btn">📷 Take or choose photos
-        <input type="file" accept="image/*" capture="environment" multiple onChange=${e => addPhotos(e.currentTarget.files)} />
-      </label>
+      <p class="muted">Take a photo of the cookbook page, or choose photos you already have (up to 4, if it runs over). Claude reads the ingredients.</p>
+      <div class="btn-row">
+        <label class="btn btn-secondary file-btn">📷 Take a photo
+          <input type="file" accept="image/*" capture="environment" onChange=${pickPhotos} />
+        </label>
+        <label class="btn btn-secondary file-btn">🖼️ Choose photos
+          <input type="file" accept="image/*" multiple onChange=${pickPhotos} />
+        </label>
+      </div>
       ${images.length ? html`<div class="previews">${images.map((img, i) => html`<div class="preview"><img src=${img.preview} alt=${`Page ${i + 1}`} /><button class="icon-btn" aria-label="Remove photo" onClick=${() => setImages(images.filter((_, j) => j !== i))}>✕</button></div>`)}</div>` : null}
       <input type="text" placeholder="Optional note, e.g. “double the garlic, skip the anchovies”" value=${hint} onInput=${e => setHint(e.currentTarget.value)} />
     </div>` : null}

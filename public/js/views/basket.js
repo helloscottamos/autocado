@@ -5,10 +5,8 @@ import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, post } from '../api.js';
 import { Btn, ProductRow, ProductThumb, Segmented, Sheet, Spinner, Stepper, botCheckActive, money, toast, toastError, timeAgo } from '../ui.js';
+import { CheckoutCard, JourneyBar, OCADO_BASKET, OCADO_SLOTS, OrderedBanner } from '../journey.js';
 
-const OCADO_BASKET = 'https://www.ocado.com/basket';
-// The page Ocado's own "Book a slot" button opens (home delivery).
-const OCADO_SLOTS = 'https://www.ocado.com/delivery/home/slots?in-checkout-walk=false&shippingGroup=default+home+delivery';
 const POLL_MS = 120_000;         // re-read the trolley every 2 minutes while this screen is open…
 const IDLE_STOP_MS = 10 * 60_000; // …but stop after 10 minutes without anyone touching the screen
 
@@ -31,14 +29,17 @@ export function BasketView({ state, params, progress, trolley, go }) {
     }
   };
 
+  const shop = state.week.openShop;
+  const sentAlready = shop && !draft && (shop.kind === mode || mode === 'topup') && !(mode === 'topup' && list.toBuy);
+
   return html`
     <section class="view">
       <div class="view-head">
-        <div>
-          <h1>Basket</h1>
-          <p class="sub">Your real Ocado trolley, and a list to top it up. Nothing is ordered until you check out on Ocado.</p>
-        </div>
+        <div><h1>Basket</h1></div>
       </div>
+
+      <${OrderedBanner} state=${state} />
+      <${JourneyBar} state=${state} mode=${draft && !building ? draft.mode : mode} here="basket" />
 
       ${botCheckActive(state) ? html`<div class="banner banner-warn">
         <span>${state.ocado.botCheck.message}</span>
@@ -49,24 +50,32 @@ export function BasketView({ state, params, progress, trolley, go }) {
         <a class="btn btn-small btn-secondary" href="#/settings">Connect Ocado</a>
       </div>` : null}
 
-      <${TrolleyCard} state=${state} trolley=${trolley} collapsed=${!!draft && !building} />
+      <${CheckoutCard} state=${state} trolley=${trolley} />
 
-      <div class="section-head"><h2>Add to the trolley</h2></div>
+      <div class="section-head"><h2>${draft && !building ? (draft.mode === 'topup' ? 'Your top-up list' : "This week's list") : shop ? 'Add more to the trolley' : 'Your list'}</h2></div>
       ${draft && !building ? html`<${Draft} draft=${draft} state=${state} trolley=${trolley} sending=${sending} progress=${progress.send} onRebuild=${build} />` : html`
-        <${Segmented} label="Type of shop" value=${mode} onChange=${setMode} options=${[{ value: 'weekly', label: 'Weekly shop' }, { value: 'topup', label: 'Top-up' }]} />
+        <${Segmented} label="Which list" value=${mode} onChange=${m => go('basket', { mode: m })} options=${[
+          { value: 'weekly', label: `This week's shop (${state.lists.weekly.toBuy})` },
+          { value: 'topup', label: `Just the Needed list (${state.lists.topup.toBuy})` },
+        ]} />
         <div class="card">
-          ${mode === 'weekly' ? html`
-            <p><strong>${list.toBuy}</strong> item${list.toBuy === 1 ? '' : 's'} from ${Object.keys(state.plan.selected).length} recipe(s) and the needed list.</p>
-            ${list.unanswered ? html`<p class="warn-text">${list.unanswered} item${list.unanswered === 1 ? '' : 's'} not checked yet — they will be included. <a href="#/week">Check them first</a></p>` : null}
+          ${sentAlready ? html`
+            <p>You've added ${mode === 'topup' ? 'the Needed list' : "this week's list"} to your Ocado trolley.</p>
+            <p class="muted small">Changed the recipes or the Needed list? Find products again: only what's missing gets added.</p>
+          ` : mode === 'weekly' ? html`
+            <p><strong>${list.toBuy}</strong> item${list.toBuy === 1 ? '' : 's'} from ${Object.keys(state.plan.selected).length} recipe(s) and the Needed list.</p>
+            ${list.unanswered ? html`<p class="warn-text">${list.unanswered} item${list.unanswered === 1 ? '' : 's'} not checked yet — they will be included. <a href="#/week?step=cupboard">Check them first</a></p>` : null}
           ` : html`
-            <p><strong>${list.toBuy}</strong> item${list.toBuy === 1 ? '' : 's'} on the needed list.</p>
+            <p><strong>${list.toBuy}</strong> item${list.toBuy === 1 ? '' : 's'} on the Needed list, without this week's recipes.</p>
             ${!list.toBuy ? html`<p class="muted">Add items on the <a href="#/needed">Needed</a> tab first.</p>` : null}
           `}
           <p class="muted small">Prefers ${state.settings.preferOrganic ? 'organic, then ' : ''}your usual choice and favourites. Anything already in your trolley counts, so nothing gets doubled up.</p>
           ${building ? html`<${ProgressBar} p=${progress.draft} />` : html`
-            <${Btn} kind="primary" class="wide" disabled=${!list.toBuy} onClick=${build}>Find products on Ocado<//>`}
+            <${Btn} kind=${sentAlready ? 'secondary' : 'primary'} class="wide" disabled=${!list.toBuy} onClick=${build}>Find products on Ocado<//>`}
         </div>
       `}
+
+      <${TrolleyCard} state=${state} trolley=${trolley} collapsed=${(!!draft && !building) || !!shop} />
       ${state.history.length ? html`<${History} history=${state.history} />` : null}
     </section>
   `;
@@ -219,7 +228,8 @@ function Draft({ draft, state, trolley, sending, progress, onRebuild }) {
     if (clearFirst && !confirm('Empty your Ocado trolley before adding these items?')) return;
     const r = await post('/api/draft/send', { clearFirst });
     const extra = r.alreadyThere ? ` ${r.alreadyThere} ${r.alreadyThere === 1 ? 'was' : 'were'} already in the trolley.` : '';
-    toast(r.failed ? `Added ${r.added} items — ${r.failed} could not be added.${extra}` : `Added ${r.added} item${r.added === 1 ? '' : 's'} to your Ocado trolley.${extra}`, r.failed ? 'warn' : 'success', 7000);
+    toast(r.failed ? `Added ${r.added} items — ${r.failed} could not be added.${extra}` : `Added ${r.added} item${r.added === 1 ? '' : 's'} to your Ocado trolley.${extra} Next: check out on Ocado.`, r.failed ? 'warn' : 'success', 7000);
+    if (!r.failed) window.scrollTo({ top: 0, behavior: 'smooth' }); // the checkout step is at the top
   };
 
   return html`
@@ -241,6 +251,7 @@ function Draft({ draft, state, trolley, sending, progress, onRebuild }) {
         return html`<li key=${l.key} class=${`draft-line status-${l.status} ${l.packs === 0 ? 'skipped' : ''}`}>
         <div class="draft-line-head">
           <span class="draft-item">${l.item}</span>
+          ${l.required ? html`<span class="badge badge-need">Needed</span>` : null}
           ${l.needsText ? html`<span class="muted small">need ${l.needsText}</span>` : null}
           <span class=${`reason reason-${slug(l.reason)}`}>${l.reason}</span>
           ${inTrolley ? html`<span class="badge badge-ok" title="Already in your Ocado trolley">${inTrolley >= l.packs ? `Already in trolley ×${inTrolley}` : `×${inTrolley} in trolley — adds ${l.packs - inTrolley}`}</span>` : null}

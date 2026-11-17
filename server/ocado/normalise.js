@@ -7,11 +7,24 @@
 //   price: { current: { amount }, unit: { label, current: { amount } }, original? }
 //   image: { src }   size: { value: "2L" }   available: boolean
 //   favorite: {} when the signed-in customer has favourited it
+//
+// The product-info API (PUT /api/webproductpagews/v6/products) names things
+// differently, verified against live ocado.com 2026-11-17:
+//   price: { amount, currency }, promoPrice: { amount } (price cuts)
+//   unitPrice / promoUnitPrice: { price: { amount, currency: GBP | GBX }, unit: "fop.price.per.kg" }
+//   promotions[]: { description, retailerPromotionId }   packSizeDescription: "370g"
+//   iconAttributes[]: { label: "Organic", file }
 
 const num = v => {
   if (v === null || v === undefined || v === '') return null;
   const n = parseFloat(String(v));
   return Number.isFinite(n) ? n : null;
+};
+
+/** An Ocado money object in pounds. GBX is pence. */
+const pounds = m => {
+  const n = num(m?.amount);
+  return n !== null && m?.currency === 'GBX' ? n / 100 : n;
 };
 
 const UNIT_LABELS = {
@@ -26,7 +39,9 @@ const DEAL_RE = /£\s?\d|\d+\s?%|\bhalf price\b|\bbuy\b|\bfree\b|\bwas\b|\bfor\s
 export const isDeal = description => DEAL_RE.test(String(description || ''));
 
 function offerList(e) {
-  const list = Array.isArray(e?.offers) && e.offers.length ? e.offers : (e?.offer ? [e.offer] : []);
+  const list = Array.isArray(e?.offers) && e.offers.length ? e.offers
+    : Array.isArray(e?.promotions) && e.promotions.length ? e.promotions
+      : (e?.offer ? [e.offer] : []);
   const seen = new Set();
   const out = [];
   for (const o of list) {
@@ -43,10 +58,31 @@ export function normaliseLabels(e) {
   return offerList(e).filter(o => !isDeal(o.description)).map(o => o.description);
 }
 
+// The product-info API's promoPrice is the price after a price cut. Only
+// trust it when the promotion says so, not for a multi-buy.
+const PRICE_CUT_RE = /\bnow\b|\bwas\b|half price|\d+\s?% off/i;
+const promoPrice = e => (e?.promoPrice && offerList(e).some(o => PRICE_CUT_RE.test(o.description)) ? pounds(e.promoPrice) : null);
+
+/** { price, wasPrice, unitPrice, unitLabel } from either Ocado shape. */
+function prices(e) {
+  if (e?.price?.current || e?.price?.original || e?.price?.unit) {
+    const unitLabel = e.price.unit?.label;
+    return { price: num(e.price.current?.amount), wasPrice: num(e.price.original?.amount), unitPrice: num(e.price.unit?.current?.amount), unitLabel };
+  }
+  const full = pounds(e?.price);
+  const cut = promoPrice(e);
+  const unit = (cut !== null && e?.promoUnitPrice) || e?.unitPrice;
+  return {
+    price: cut ?? full,
+    wasPrice: cut !== null && full !== null && full > cut ? full : null,
+    unitPrice: pounds(unit?.price),
+    unitLabel: unit?.unit,
+  };
+}
+
 export function normaliseOffers(e) {
   const out = offerList(e).filter(o => isDeal(o.description));
-  const original = num(e?.price?.original?.amount);
-  const current = num(e?.price?.current?.amount);
+  const { price: current, wasPrice: original } = prices(e);
   if (out.length === 0 && original && current && original > current) {
     out.push({ id: 'price-cut', description: `Now £${current.toFixed(2)}, was £${original.toFixed(2)}`, minQty: null });
   }
@@ -54,24 +90,24 @@ export function normaliseOffers(e) {
 }
 
 export function isOrganic(e) {
-  const attrs = Array.isArray(e?.attributes) ? e.attributes : [];
-  if (attrs.some(a => String(a?.icon || a?.label || '').toLowerCase() === 'organic')) return true;
+  const attrs = [e?.attributes, e?.iconAttributes].flatMap(a => (Array.isArray(a) ? a : []));
+  if (attrs.some(a => [a?.icon, a?.label, a?.file].some(v => String(v || '').toLowerCase() === 'organic'))) return true;
   return /\borganic\b/i.test(e?.name || '');
 }
 
 export function normaliseEntity(e) {
-  const unitLabel = e?.price?.unit?.label;
+  const { price, wasPrice, unitPrice, unitLabel } = prices(e);
   const imageSrc = typeof e?.image === 'string' ? e.image : e?.image?.src;
   return {
     productId: e.productId,
     sku: e.retailerProductId ?? null,
     name: e.name,
     brand: e.brand ?? null,
-    price: num(e?.price?.current?.amount),
-    wasPrice: num(e?.price?.original?.amount),
-    unitPrice: num(e?.price?.unit?.current?.amount),
+    price,
+    wasPrice,
+    unitPrice,
     unitLabel: UNIT_LABELS[unitLabel] ?? (unitLabel ? unitLabel.replace(/^fop\.price\.per\./, '') : null),
-    size: e?.size?.value ?? null,
+    size: e?.size?.value ?? e?.packSizeDescription ?? null,
     image: imageSrc ? (imageSrc.startsWith('http') ? imageSrc : `https://www.ocado.com${imageSrc}`) : null,
     available: e.available !== false,
     organic: isOrganic(e),
@@ -109,4 +145,80 @@ export function productsFromHtml(html, extractProductEntities, limit = 48) {
     }
   }
   return out;
+}
+
+/** The JSON array that starts at `start` (a '['), read with strings in mind. */
+function jsonArrayAt(text, start) {
+  let depth = 0;
+  let inString = false;
+  for (let j = start; j < text.length; j++) {
+    const c = text[j];
+    if (inString) {
+      if (c === '\\') j++;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === '[' || c === '{') depth++;
+    else if (c === ']' || c === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(start, j + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+/** Most favourites the /favorites page lists; past this Ocado loads more as you scroll. */
+export const FAVOURITES_PAGE_MAX = 300;
+
+/**
+ * Ocado's /favorites page, as first sent, lists the ids of up to 300
+ * favourites (in Ocado's order) under `productGroups`, includes full details
+ * for only the first 50 of them in `productEntities`, and draws tiles for just
+ * the first few. So read the id list, and say which ids still need details.
+ *
+ * Returns { ids, products, missing, complete }: `complete` is false when the
+ * list looks cut off at Ocado's limit, so there may be more favourites.
+ */
+export function favouritesFromHtml(html, extractProductEntities) {
+  const entities = Object.values(extractProductEntities(html)).filter(e => e?.productId && e.name);
+  const byId = new Map(entities.map(e => [e.productId, e]));
+  let ids = null;
+  const at = html.indexOf('"productGroups":[');
+  if (at >= 0) {
+    const groups = jsonArrayAt(html, html.indexOf('[', at));
+    const group = groups?.find(g => g?.type === 'favorite') ?? groups?.[0];
+    if (Array.isArray(group?.products)) ids = [...new Set(group.products.filter(id => typeof id === 'string'))];
+  }
+  if (!ids?.length) {
+    // No id list (page layout changed): fall back to the products marked as favourites, then to the tiles.
+    const marked = entities.filter(e => e.favorite !== undefined && e.favorite !== null);
+    const products = marked.length ? marked.map(normaliseEntity) : productsFromHtml(html, extractProductEntities, 500);
+    return { ids: products.map(p => p.productId), products, missing: [], complete: products.length < 50 };
+  }
+  return {
+    ids,
+    products: ids.filter(id => byId.has(id)).map(id => normaliseEntity(byId.get(id))),
+    missing: ids.filter(id => !byId.has(id)),
+    complete: ids.length < FAVOURITES_PAGE_MAX,
+  };
+}
+
+/**
+ * Every favourite on the /favorites page, in Ocado's order, with details
+ * fetched (`fetchProducts(ids)`) for the ones the page left out. The list
+ * carries `complete` (false if it may be missing some) and `warning`.
+ */
+export async function readFavourites(html, extractProductEntities, fetchProducts) {
+  const { ids, products, missing, complete } = favouritesFromHtml(html, extractProductEntities);
+  let more = [];
+  let warning = null;
+  if (missing.length) {
+    try { more = await fetchProducts(missing); } catch (e) { warning = `Only read ${products.length} of your Ocado favourites: ${e.message}`; }
+  }
+  const byId = new Map([...products, ...more].map(p => [p.productId, p]));
+  const list = ids.map(id => byId.get(id)).filter(Boolean).map(p => ({ ...p, favourite: true }));
+  list.complete = complete && list.length === ids.length;
+  list.warning = warning;
+  return list;
 }

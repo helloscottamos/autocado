@@ -4,11 +4,23 @@
 
 | Screen | What it's for |
 |---|---|
-| **This week** | Tap the recipes you're cooking. The shopping list rebuilds live, and amounts merge across recipes ("400g + 800g chopped tomatoes"). For each item, answer **Got it / Buy**, or use **Check what we have** for one big question at a time. Cupboard staples (salt, oil, spices) default to "got it". |
-| **Needed** | "We've run out of…". Add single items or paste a list. These go into the next weekly shop *or* a quick top-up, and clear once they've been sent to Ocado. |
-| **Basket** | Your **live Ocado trolley** at the top, refreshed when you open the screen, when you come back to it, and every 2 minutes while someone's using it. Change quantities or empty it from here, and those changes happen on Ocado. Below that, build a weekly or top-up list and **Add to Ocado trolley**. |
+| **This week** | Two pages. **Recipes:** tap the recipes you're cooking; each one says when you last had it. With 6 or more recipes there's a search box, which finds names and ingredients ("chickpeas"). **Past weeks** are at the bottom. **Cupboard:** the shopping list, rebuilt live, with Needed items at the top and amounts merged across recipes ("400g + 800g chopped tomatoes"). For each item, answer **Got it / Buy**, or use **Check what we have** for one big question at a time. Cupboard staples (salt, oil, spices) default to "got it". |
+| **Needed** | "We've run out of…". Add single items or paste a list. These go into this week's shop *or* a quick top-up of just these, and clear once they've been sent to Ocado. |
+| **Basket** | Match your list to Ocado products, swap anything, then **Add to Ocado trolley**. Choose this week's shop or just the Needed list. Below that is your **live Ocado trolley**, refreshed when you open the screen, when you come back to it, and every 2 minutes while someone's using it. Change quantities or empty it from here, and those changes happen on Ocado. |
 | **Favourites** | Star products from search or the basket. Stars sync with your Ocado favourites, and favourites on offer are highlighted. Prices refresh every 6 hours while connected. |
 | **Recipes** | Add recipes from a photo of a cookbook page, pasted text, a web link, "this recipe from this book" (Claude's memory, flagged so you check it), or by typing. Every import opens an editor so you can check it before saving. |
+
+A **step bar** at the top of This week and Basket shows where you are in the shop: **Recipes → Cupboard → Products → Trolley → Check out** (a top-up skips the first two and starts at **Needed**). Tap a step to go to it. The bar at the bottom of each page is always the next step.
+
+## Weeks
+
+There's always a current week. Everything Autocado adds to your Ocado trolley is recorded in it as a shop that's waiting for checkout.
+
+- **Ordering.** Autocado never checks out, but it does notice when you have: Ocado empties your trolley when an order goes through. If a shop is waiting and the trolley turns up empty (and Autocado didn't empty it), every screen asks **Did you place the order?** Autocado looks at the trolley whenever it's opened and every 15 minutes while a shop is waiting. You can also tap **I've placed the order** yourself.
+- **A fresh week.** Ordering the weekly shop files the week under **Past weeks**, with its recipes, what was ordered and the total. A new week starts with the recipes unticked and the cupboard answers cleared. The Needed list carries over. **Undo** puts it back while the new week is untouched.
+- **Top-ups** are logged in the current week as their own order and don't close it. If a top-up and the weekly shop are in the trolley together, they're one order.
+- **Shop a week again.** Each past week has **Shop this week again**, which ticks the same recipes and servings. Swap meals in and out from there: each recipe shows when you last had it.
+- **No, I emptied it** tells Autocado nothing was ordered, so the shop stops waiting.
 
 ## Product matching
 
@@ -85,7 +97,7 @@ With `HOST=0.0.0.0`:
 
 Everything stays on the machine running Autocado:
 
-- `data/state.json`: recipes, this week's plan, the needed list, favourites, remembered product choices and a log of what was sent. It's plain JSON, so you can back it up by copying it.
+- `data/state.json`: recipes, this week's plan, past weeks, the needed list, favourites, remembered product choices and a log of what was sent. It's plain JSON, so you can back it up by copying it.
 - `data/secrets.json`: Claude key and, if you ticked "remember", your Ocado email and password. Readable only by your user.
 - `data/catalogue.json`: names and pictures of products Autocado has seen, so the trolley can show them even when Ocado won't look them up.
 - `~/.ocado/session.json`: Ocado session cookies, only when using Autocado's own sign-in.
@@ -110,6 +122,7 @@ server/
   store.js            JSON-file state and secrets
   catalogue.js        products seen, for names and pictures
   shopping.js         shopping list builder, product matching, trolley top-up
+  weeks.js            weeks and orders: what's waiting in the trolley, past weeks
   ingredients.js      ingredient parsing, item names, pack maths
   recipes-import.js   photo / text / URL / book import (Claude + schema.org)
   lan-name.js         autocado.local on your home network (multicast DNS)

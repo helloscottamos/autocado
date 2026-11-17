@@ -187,6 +187,7 @@ function ResetCard({ state, go }) {
     [Object.keys(state.favourites).length, 'favourite'],
     [state.required.length, 'needed item'],
     [Object.keys(state.productChoices).length, 'remembered product'],
+    [state.pastWeeks.length, 'past week'],
     [state.history.length, 'log entry', 'log entries'],
   ].filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : (many || `${one}s`)}`);
   return html`<div class="card card-danger">

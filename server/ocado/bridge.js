@@ -14,7 +14,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { OcadoError } from './errors.js';
-import { productsFromHtml, normaliseEntity } from './normalise.js';
+import { productsFromHtml, normaliseEntity, readFavourites } from './normalise.js';
 import { remember, known } from '../catalogue.js';
 import {
   CART_URL, APPLY_QTY_URL, PRODUCTS_URL, CUSTOMER_URL, FAVOURITES_URL, SEARCH_URL, FAVOURITES_PAGE,
@@ -163,7 +163,7 @@ export class BridgeOcado {
     const html = await this.#call('GET', FAVOURITES_PAGE, { accept: 'html' });
     if (!html.includes('"productEntities"')) throw new OcadoError('SESSION_EXPIRED', 'Could not read your Ocado favourites in Firefox. Are you signed in there?');
     const { extractProductEntities } = await loadExtractor();
-    return remember(productsFromHtml(html, extractProductEntities, 500).map(p => ({ ...p, favourite: true })));
+    return remember(await readFavourites(html, extractProductEntities, ids => this.products(ids)));
   }
 
   async products(ids) {

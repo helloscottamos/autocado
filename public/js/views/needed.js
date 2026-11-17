@@ -31,10 +31,7 @@ export function NeededView({ state, go }) {
   return html`
     <section class="view">
       <div class="view-head">
-        <div>
-          <h1>Needed</h1>
-          <p class="sub">Run out of something? Add it here — it goes in the next shop.</p>
-        </div>
+        <div><h1>Needed</h1></div>
       </div>
 
       <form class="add-row" onSubmit=${e => { e.preventDefault(); add().catch(toastError); }}>
@@ -52,7 +49,7 @@ export function NeededView({ state, go }) {
 
       ${items.length === 0 ? html`
         <${Empty} icon="✅" title="Nothing needed">
-          <p>When something runs out, add it here. It will be included in the weekly shop or a quick top-up.</p>
+          <p>When something runs out, add it here. It will be included in this week's shop, or a quick top-up.</p>
         <//>` : html`
         <ul class="list">
           ${items.map(i => html`<li class="list-line" key=${i.id}>
@@ -63,10 +60,11 @@ export function NeededView({ state, go }) {
             <button class="icon-btn" aria-label=${`Remove ${i.item}`} onClick=${() => del(`/api/required/${i.id}`).catch(toastError)}>✕</button>
           </li>`)}
         </ul>
+        <p class="muted small">✓ Included in <a href="#/week">this week's shop</a>. Can't wait? Send just these as a top-up: Autocado finds them on Ocado, you check the list, then add it to your trolley.</p>
         <div class="cta-bar">
           <${Btn} kind="ghost" small onClick=${() => confirm('Clear the whole needed list?') && post('/api/required/clear')}>Clear all<//>
           <span class="spacer"></span>
-          <${Btn} kind="primary" onClick=${() => go('basket', { mode: 'topup' })}>Top-up shop with these →<//>
+          <${Btn} kind="primary" onClick=${() => go('basket', { mode: 'topup' })}>Top-up with just these →<//>
         </div>`}
     </section>
   `;

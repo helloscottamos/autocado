@@ -56,7 +56,8 @@ export function buildList(state, mode = 'weekly') {
       needsText: describeNeeds(line.needs.filter(n => n.quantity != null || n.unit)),
     });
   }
-  out.sort((a, b) => Number(a.pantry) - Number(b.pantry) || a.item.localeCompare(b.item));
+  // Needed-list items first (so a top-up or the extras are easy to find), cupboard staples last.
+  out.sort((a, b) => Number(b.required) - Number(a.required) || Number(a.pantry) - Number(b.pantry) || a.item.localeCompare(b.item));
   return {
     mode,
     lines: out,
