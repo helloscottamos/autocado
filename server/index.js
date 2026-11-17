@@ -565,7 +565,7 @@ async function refreshFavourites() {
     let fromOcado = null;
     let warning = null;
     if (store.get().ocado.connected) {
-      try { fromOcado = await ocado.favourites(); } catch (e) { warning = e.message; if (e.needsReconnect) throw e; }
+      try { fromOcado = await ocado.favourites(); warning = fromOcado.warning || null; } catch (e) { warning = e.message; if (e.needsReconnect) throw e; }
     }
     setProgress('deals', { done: 1, total: 2, message: 'Checking prices and offers…' });
     const localIds = Object.keys(store.get().favourites).filter(id => !fromOcado?.some(p => p.productId === id));
@@ -578,7 +578,8 @@ async function refreshFavourites() {
       if (fromOcado) {
         const ids = new Set(fromOcado.map(p => p.productId));
         // Favourites that were on Ocado but have been removed there: drop them.
-        for (const [id, f] of Object.entries(s.favourites)) if (f.onOcado && !ids.has(id)) delete s.favourites[id];
+        // Only when Ocado gave the whole list: past its first 300 they're just not shown.
+        if (fromOcado.complete !== false) for (const [id, f] of Object.entries(s.favourites)) if (f.onOcado && !ids.has(id)) delete s.favourites[id];
         for (const p of fromOcado) s.favourites[p.productId] = { ...s.favourites[p.productId], ...productSnapshot(p), onOcado: true, syncError: null, addedAt: s.favourites[p.productId]?.addedAt || now };
       }
       for (const p of fresh) if (s.favourites[p.productId]) s.favourites[p.productId] = { ...s.favourites[p.productId], ...productSnapshot(p) };

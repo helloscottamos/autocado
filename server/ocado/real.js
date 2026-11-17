@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { productsFromHtml, normaliseEntity } from './normalise.js';
+import { productsFromHtml, normaliseEntity, readFavourites } from './normalise.js';
 import { OcadoError, classifyError } from './errors.js';
 import { remember, known } from '../catalogue.js';
 import { CART_URL, PRODUCTS_URL, CUSTOMER_URL, FAVOURITES_URL, BASE_URL, cartLines, mapCart } from './cart.js';
@@ -163,7 +163,7 @@ export class RealOcado {
       this.loggedIn = false;
       throw new OcadoError('SESSION_EXPIRED', 'Could not read Ocado favourites — session has probably expired.');
     }
-    return remember(productsFromHtml(html, extractProductEntities, 500).map(p => ({ ...p, favourite: true })));
+    return remember(await readFavourites(html, extractProductEntities, ids => this.products(ids)));
   }
 
   /**
