@@ -29,7 +29,7 @@ If there's no release file, or you've changed the add-on, sign your own copy. Fi
    WEB_EXT_API_KEY="user:12345:678" WEB_EXT_API_SECRET="your-secret" npm run addon:sign
    ```
 
-   After a minute or two the signed file appears in `dist/` (for example `dist/autocado_for_ocado-0.1.0.xpi`).
+   After a minute or two the signed file appears in `dist/` (for example `dist/autocado_for_ocado-0.1.1.xpi`).
 4. In Firefox, open `about:addons` → ⚙️ → **Install Add-on From File…** and choose that `.xpi`.
 
 If you change the add-on later, bump `version` in `addon/manifest.json` and sign again.

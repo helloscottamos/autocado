@@ -2,7 +2,7 @@
 
 **Plan the week's meals, tick off what's already in the cupboard, and Autocado fills your Ocado trolley for you, choosing organic, your favourites and the products you usually buy.** You still check out on Ocado yourself: Autocado never places an order or pays for anything.
 
-![Autocado's "This week" screen: recipes chosen for the week and the shopping list they make](docs/images/week.png)
+![Autocado checking the cupboard: the shopping list two recipes make, with "Got it" or "Buy" for each item, and a step bar from recipes to checkout](docs/images/week.png)
 
 > **Unofficial.** Autocado isn't made by, affiliated with or endorsed by Ocado. It uses your own Ocado account the way the Ocado website does, which may go against Ocado's terms, and it can break whenever Ocado changes its site. It's for your own household shopping, at your own risk.
 
@@ -13,11 +13,11 @@
 - **Needed:** note anything that's run out. It goes into the next shop.
 - **Basket:** matches every item to an Ocado product (your usual, then a favourite, then organic). Swap anything you like, then it fills your real Ocado trolley, adding only what isn't already there. It also shows what's in your trolley right now.
 - **Weeks:** Autocado notices when you've checked out on Ocado and files the week, with what you cooked and bought. Shop a past week again, then swap meals in and out to keep it varied.
-- **Favourites:** star products and see which ones are on offer.
-- **Recipes:** add them from a web link, pasted text, a photo of a cookbook page, or by typing.
+- **Favourites:** all your Ocado favourites sync in with today's prices, and the ones on offer are picked out. Star a product in Autocado and it's starred on Ocado too.
+- **Recipes:** add them from a web link, pasted text, a photo of a cookbook page (taken there and then, or from your photos), or by typing.
 - **Any screen:** laptop, phone, tablet or kitchen mirror. Every open screen updates live.
 
-![The Basket screen: your live Ocado trolley, and a list being added to it](docs/images/basket.png)
+![The Basket screen: every item matched to an Ocado product, ready to add to your trolley](docs/images/basket.png)
 
 ## What you need
 
@@ -48,7 +48,7 @@ Open **http://localhost:3456** in your browser. Leave the terminal open: that's 
 Ocado only trusts real browsers, so Autocado uses your Ocado account through a small Firefox add-on. This is what makes it reliable.
 
 - **Easiest:** if the [Releases page](https://github.com/helloscottamos/autocado/releases) has a file ending in `.xpi`, open it in Firefox and click **Add**. It stays installed.
-- **Otherwise:** in Firefox, type `about:debugging#/runtime/this-firefox` in the address bar, click **Load Temporary Add-on…** and choose `addon/manifest.json` from the Autocado folder. This lasts until Firefox restarts. [Permanent install instructions](docs/firefox-addon.md#install-permanently-free-about-10-minutes-once).
+- **Otherwise:** in Firefox, type `about:debugging#/runtime/this-firefox` in the address bar, click **Load Temporary Add-on…** and choose `addon/manifest.json` from the Autocado folder. This lasts until Firefox restarts. [Permanent install instructions](docs/firefox-addon.md#install-permanently).
 
 ### 3. Connect to Ocado
 
@@ -66,7 +66,7 @@ Check the **Search for** column: that's what gets looked up on Ocado, so keep it
 
 1. **This week:** tap the recipes you're cooking, then **Check the cupboard**.
 2. Tap **Check what we have** and answer each question.
-3. **Find products on Ocado.** Look over the matches and tap **Swap** for anything you'd change.
+3. Tap **Find products on Ocado**. Look over the matches and tap **Swap** for anything you'd change.
 4. Tap **Add to Ocado trolley**.
 5. Open Ocado, check the trolley, book a delivery slot and pay as normal.
 
@@ -88,7 +88,7 @@ Open **http://localhost:3457** for a fake catalogue and trolley with some sample
 
 ## Use it on your phone
 
-<img src="docs/images/phone-check.png" alt="Autocado on a phone, asking 'Do we have enough chickpeas?'" width="300" align="right">
+<img src="docs/images/phone-check.png" alt="Autocado on a phone, asking 'Do we have enough beef mince?'" width="300" align="right">
 
 By default only the computer running Autocado can open it. To use it from phones and tablets on your home Wi-Fi:
 
@@ -117,7 +117,10 @@ Autocado is using its own sign-in and Ocado's bot check has gone stale. Open Fir
 On your computer, in the `data/` folder. Nothing is sent anywhere except Ocado and, if you add a key, Anthropic (only the recipes you import). **Settings → Reset all data** clears it all; you type `confirm` to go ahead.
 
 **It stopped working.**
-Ocado may have changed its website. Update with `git pull && npm install`, restart, and if it's still broken, [open an issue](https://github.com/helloscottamos/autocado/issues).
+Ocado may have changed its website. Update with `git pull && npm install`, restart Autocado, and reload the add-on (see below). If it's still broken, [open an issue](https://github.com/helloscottamos/autocado/issues).
+
+**I've updated Autocado. Do I need to do anything in Firefox?**
+If you loaded the add-on from the Autocado folder, reload it: open `about:debugging#/runtime/this-firefox` and click **Reload** next to **Autocado for Ocado**. Updates sometimes let the add-on make a new request, and the old copy refuses it. For example, an add-on older than 0.1.1 can only read your first 300 Ocado favourites.
 
 ## More detail
 
