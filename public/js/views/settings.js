@@ -14,7 +14,7 @@ export function SettingsView({ state, login, setup, go }) {
   return html`
     <section class="view">
       ${setup ? html`<div class="welcome">
-        <h1>Welcome to Autocado 🥑</h1>
+        <h1>Welcome to Autocado</h1>
         <p>Pick this week's recipes, say what you already have, and Autocado fills your Ocado trolley — preferring organic and your favourites. It never places the order: you check the trolley and book a slot on Ocado.</p>
         <ol class="steps">
           <li><strong>Connect Ocado</strong> so Autocado can fill your trolley. The Firefox add-on is the most reliable way.</li>

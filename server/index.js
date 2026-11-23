@@ -77,6 +77,7 @@ function publicState() {
       bridge: { ...bridge.status(), addonPath: path.join(ADDON_DIR, 'manifest.json') },
       via: ocado.via ?? (MOCK ? 'demo' : 'server'),
       lan: { shared: SHARED, urls: lanUrls() },
+      hub,
     },
   };
 }
@@ -777,6 +778,23 @@ async function startSharing() {
   for (const u of rest) console.log(`                      or: ${u}`);
   broadcast('state', {});
 }
+
+// Hengrove Home, if you run it, is a launcher for the house's little web apps.
+// When it's running here and lists Autocado, the app shows an "All tools" link
+// back to it. Looked for at start and every 5 minutes.
+const HUB_PORT = Number(process.env.HUB_PORT || 8080);
+let hub = null;
+async function findHub() {
+  let found = null;
+  try {
+    const res = await fetch(`http://127.0.0.1:${HUB_PORT}/api/tools`, { signal: AbortSignal.timeout(1500) });
+    const data = res.ok ? await res.json() : null;
+    if (data?.tools?.some?.(t => t?.id === 'autocado')) found = { port: HUB_PORT };
+  } catch { /* not running */ }
+  if (JSON.stringify(found) !== JSON.stringify(hub)) { hub = found; broadcast('state', {}); }
+}
+findHub();
+setInterval(findHub, 5 * 60_000).unref();
 
 // While a shop waits in the trolley, look at the trolley every 15 minutes so
 // Autocado notices the order even if nobody opens it after checking out.

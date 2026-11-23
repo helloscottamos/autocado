@@ -6,7 +6,7 @@
 import { html } from 'htm/preact';
 import { useRef, useState } from 'preact/hooks';
 import { post } from '../api.js';
-import { Btn, Empty, Sheet, toastError } from '../ui.js';
+import { Btn, Empty, Icon, Sheet, toastError } from '../ui.js';
 import { CheckoutCard, JourneyBar, OrderedBanner, PastWeeks, hadWhen } from '../journey.js';
 
 const SEARCH_FROM = 6; // recipes before a search box is worth its space
@@ -56,7 +56,7 @@ function RecipesStep({ state, trolley, go }) {
     <${Top} state=${state} trolley=${trolley} here="recipes" />
 
     ${state.recipes.length === 0 ? html`
-      <${Empty} icon="📖" title="No recipes yet">
+      <${Empty} icon="book" title="No recipes yet">
         <p>Add your staple recipes — from a photo of the cookbook page, a web link, or by typing them in.</p>
         <${Btn} kind="primary" onClick=${() => go('recipes', { add: '1' })}>Add a recipe<//>
       <//>` : html`
@@ -103,9 +103,10 @@ function searchRecipes(recipes, q) {
 
 function RecipeSearch({ value, onChange }) {
   return html`<form class="recipe-search" role="search" onSubmit=${e => { e.preventDefault(); e.currentTarget.querySelector('input').blur(); }}>
+    <${Icon} name="search" size=${18} />
     <input type="search" enterkeyhint="search" placeholder="Search recipes or ingredients" aria-label="Search recipes"
       value=${value} onInput=${e => onChange(e.currentTarget.value)} onKeyDown=${e => e.key === 'Escape' && onChange('')} />
-    ${value ? html`<button type="button" class="icon-btn" aria-label="Clear search" onClick=${() => onChange('')}>✕</button>` : null}
+    ${value ? html`<button type="button" class="icon-btn" aria-label="Clear search" onClick=${() => onChange('')}><${Icon} name="close" size=${18} /></button>` : null}
   </form>`;
 }
 
@@ -118,13 +119,13 @@ function CupboardStep({ state, trolley, go }) {
   const otherLines = list.lines.filter(l => !l.required);
   const have = list.lines.filter(l => l.check === 'have').length;
   const toOcado = () => go('basket', { mode: 'weekly' });
-  const back = html`<${Btn} small kind="ghost" onClick=${() => go('week')}>← Recipes<//>`;
+  const back = html`<${Btn} small kind="ghost" onClick=${() => go('week')}><${Icon} name="back" size=${18} /> Recipes<//>`;
 
   if (!chosen.length) {
     return html`<section class="view">
       <${Head} state=${state}>${back}<//>
       <${Top} state=${state} trolley=${trolley} here="cupboard" />
-      <${Empty} icon="🥫" title="No recipes chosen yet">
+      <${Empty} icon="week" title="No recipes chosen yet">
         <${Btn} kind="primary" onClick=${() => go('week')}>Choose recipes<//>
       <//>
     </section>`;
@@ -162,7 +163,7 @@ function CupboardStep({ state, trolley, go }) {
 
 function RecipeToggle({ recipe, on, onToggle, servings, had, hint }) {
   return html`<button class=${`recipe-toggle ${on ? 'on' : ''}`} aria-pressed=${on} onClick=${onToggle}>
-    <span class="tick" aria-hidden="true">${on ? '✓' : ''}</span>
+    <span class="tick" aria-hidden="true">${on ? html`<${Icon} name="check" size=${16} />` : null}</span>
     <span class="recipe-toggle-name">${recipe.name}</span>
     <span class="recipe-toggle-meta">${recipe.ingredients.length} ingredients${recipe.servings ? ` · serves ${servings || recipe.servings}` : ''}</span>
     ${hint ? html`<span class="recipe-toggle-had">${hint}</span>` : null}
@@ -218,7 +219,8 @@ function CheckFlow({ lines, onAnswer, onClose, go }) {
         <button class="link-btn" onClick=${() => next(null)}>Not sure — skip</button>
       </div>` : html`
       <div class="check-card">
-        <p class="check-q">All checked ✓</p>
+        <span class="check-done"><${Icon} name="done" size=${44} /></span>
+        <p class="check-q">All checked</p>
         <div class="check-buttons">
           <button class="btn btn-big btn-primary" onClick=${() => { onClose(); go('basket', { mode: 'weekly' }); }}>Find products on Ocado →</button>
           <button class="btn btn-secondary" onClick=${onClose}>Back to the list</button>

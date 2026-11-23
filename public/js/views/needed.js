@@ -4,7 +4,7 @@
 import { html } from 'htm/preact';
 import { useMemo, useState } from 'preact/hooks';
 import { post, del } from '../api.js';
-import { Btn, Empty, toast, toastError } from '../ui.js';
+import { Btn, Empty, Icon, toast, toastError } from '../ui.js';
 
 export function NeededView({ state, go }) {
   const [text, setText] = useState('');
@@ -48,7 +48,7 @@ export function NeededView({ state, go }) {
         </div>` : null}
 
       ${items.length === 0 ? html`
-        <${Empty} icon="✅" title="Nothing needed">
+        <${Empty} icon="done" title="Nothing needed">
           <p>When something runs out, add it here. It will be included in this week's shop, or a quick top-up.</p>
         <//>` : html`
         <ul class="list">
@@ -57,10 +57,10 @@ export function NeededView({ state, go }) {
               <div class="list-item">${i.item}</div>
               ${i.quantity ? html`<div class="list-meta">${i.quantity}${i.unit ? ` ${i.unit}` : ''}</div>` : null}
             </div>
-            <button class="icon-btn" aria-label=${`Remove ${i.item}`} onClick=${() => del(`/api/required/${i.id}`).catch(toastError)}>✕</button>
+            <button class="icon-btn" aria-label=${`Remove ${i.item}`} onClick=${() => del(`/api/required/${i.id}`).catch(toastError)}><${Icon} name="close" size=${18} /></button>
           </li>`)}
         </ul>
-        <p class="muted small">✓ Included in <a href="#/week">this week's shop</a>. Can't wait? Send just these as a top-up: Autocado finds them on Ocado, you check the list, then add it to your trolley.</p>
+        <p class="muted small">Included in <a href="#/week">this week's shop</a>. Can't wait? Send just these as a top-up: Autocado finds them on Ocado, you check the list, then add it to your trolley.</p>
         <div class="cta-bar">
           <${Btn} kind="ghost" small onClick=${() => confirm('Clear the whole needed list?') && post('/api/required/clear')}>Clear all<//>
           <span class="spacer"></span>

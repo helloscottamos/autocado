@@ -4,7 +4,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, post } from '../api.js';
-import { Btn, ProductRow, ProductThumb, Segmented, Sheet, Spinner, Stepper, botCheckActive, money, toast, toastError, timeAgo } from '../ui.js';
+import { Btn, Icon, ProductRow, ProductThumb, Segmented, Sheet, Spinner, Stepper, botCheckActive, money, toast, toastError, timeAgo } from '../ui.js';
 import { CheckoutCard, JourneyBar, OCADO_BASKET, OCADO_SLOTS, OrderedBanner } from '../journey.js';
 
 const POLL_MS = 120_000;         // re-read the trolley every 2 minutes while this screen is open…
@@ -145,7 +145,7 @@ function TrolleyCard({ state, trolley, collapsed }) {
         </p>
       </div>
       <div class="btn-row">
-        <button class="icon-btn" aria-label="Refresh trolley from Ocado" title="Refresh from Ocado" onClick=${reload}>↻</button>
+        <button class="icon-btn" aria-label="Refresh trolley from Ocado" title="Refresh from Ocado" onClick=${reload}><${Icon} name="refresh" size=${19} /></button>
         ${items.length ? html`<button class="btn btn-small btn-secondary" aria-expanded=${open} onClick=${() => setOpen(!open)}>${open ? 'Hide' : 'Show'} items</button>` : null}
       </div>
     </div>
@@ -169,8 +169,8 @@ function TrolleyCard({ state, trolley, collapsed }) {
       </li>`)}
     </ul>` : null}
     ${state.env.mock ? html`<p class="warn-text small">Demo trolley: not your real Ocado account.</p>` : html`<div class="btn-row">
-      <a class="btn btn-small btn-primary" href=${OCADO_BASKET} target="_blank" rel="noopener">Check out on Ocado ↗</a>
-      <a class="btn btn-small btn-secondary" href=${OCADO_SLOTS} target="_blank" rel="noopener">Book a delivery slot ↗</a>
+      <a class="btn btn-small btn-primary" href=${OCADO_BASKET} target="_blank" rel="noopener">Check out on Ocado <${Icon} name="external" size=${16} /></a>
+      <a class="btn btn-small btn-secondary" href=${OCADO_SLOTS} target="_blank" rel="noopener">Book a delivery slot <${Icon} name="external" size=${16} /></a>
       <span class="spacer"></span>
       ${items.length ? html`<${Btn} small kind="ghost" onClick=${empty}>Empty trolley<//>` : null}
     </div>`}

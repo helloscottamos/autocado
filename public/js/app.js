@@ -1,7 +1,7 @@
 import { html, render } from 'htm/preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useLiveState } from './api.js';
-import { Toasts, botCheckActive } from './ui.js';
+import { Toasts, botCheckActive, Icon, Mark } from './ui.js';
 import { OrderCheckBanner, useOrderWatch } from './journey.js';
 import { WeekView } from './views/week.js';
 import { NeededView } from './views/needed.js';
@@ -11,12 +11,22 @@ import { RecipesView } from './views/recipes.js';
 import { SettingsView } from './views/settings.js';
 
 const TABS = [
-  { id: 'week', label: 'This week', icon: '🗓️' },
-  { id: 'needed', label: 'Needed', icon: '📝' },
-  { id: 'basket', label: 'Basket', icon: '🛒' },
-  { id: 'favourites', label: 'Favourites', icon: '⭐' },
-  { id: 'recipes', label: 'Recipes', icon: '📖' },
+  { id: 'week', label: 'This week', icon: 'week' },
+  { id: 'needed', label: 'Needed', icon: 'needed' },
+  { id: 'basket', label: 'Basket', icon: 'cart' },
+  { id: 'favourites', label: 'Favourites', icon: 'star' },
+  { id: 'recipes', label: 'Recipes', icon: 'book' },
 ];
+
+// Back to Hengrove Home (the house's launcher) the way you came: by name, or
+// its own port. Only offered when Home is running on this computer.
+function hubLink(hub) {
+  if (!hub) return null;
+  const host = location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return `http://localhost:${hub.port}/`;
+  if (host.endsWith('.local')) return 'http://hengrove.local/';
+  return location.port ? `http://${host}:${hub.port}/` : `http://${host}/`;
+}
 
 function parseHash() {
   const [path, query = ''] = location.hash.replace(/^#\/?/, '').split('?');
@@ -59,6 +69,7 @@ function App() {
   const props = { ...live, params: route.params, go };
   const neededCount = state.required.length;
   const onOffer = Object.values(state.favourites).filter(f => f.offers?.length).length;
+  const hub = hubLink(state.env.hub);
 
   const Main = {
     week: WeekView, needed: NeededView, basket: BasketView, favourites: FavouritesView,
@@ -68,13 +79,14 @@ function App() {
   return html`
     <div class="shell">
       <header class="topbar">
-        <a class="brand" href="#/week" aria-label="Autocado home"><span aria-hidden="true">🥑</span> Autocado</a>
-        ${state.env.mock ? html`<span class="badge badge-demo" title="Using a fake Ocado catalogue">Demo mode</span>` : null}
+        <a class="brand" href="#/week" aria-label="Autocado home"><${Mark} /><span class="word">autocado</span></a>
+        ${state.env.mock ? html`<span class="badge badge-demo" title="Using a fake Ocado catalogue">Demo</span>` : null}
         <span class="spacer"></span>
         <a class=${`status-pill ${!state.ocado.connected ? 'off' : !state.env.bridge?.online && botCheckActive(state) ? 'warn' : 'ok'}`} href="#/settings" title=${state.ocado.botCheck?.message || state.ocado.lastError || ''}>
           <span class="dot" aria-hidden="true"></span>${!state.ocado.connected ? 'Ocado not connected' : state.env.bridge?.online ? 'Ocado connected (Firefox)' : botCheckActive(state) ? 'Ocado: refresh sign-in' : 'Ocado connected'}
         </a>
-        <a class="icon-btn" href="#/settings" aria-label="Settings">⚙️</a>
+        ${hub ? html`<a class="icon-btn hub-icon" href=${hub} aria-label="All tools" title="All tools"><${Icon} name="home" /></a>` : null}
+        <a class=${`icon-btn ${view === 'settings' ? 'on' : ''}`} href="#/settings" aria-label="Settings" title="Settings"><${Icon} name="settings" /></a>
       </header>
 
       ${!online ? html`<div class="banner banner-error">Lost connection to the Autocado server — reconnecting…</div>` : null}
@@ -82,11 +94,12 @@ function App() {
 
       <nav class="tabs" aria-label="Sections">
         ${TABS.map(t => html`<a href=${`#/${t.id}`} class=${`tab ${view === t.id ? 'on' : ''}`} aria-current=${view === t.id ? 'page' : undefined}>
-          <span class="tab-icon" aria-hidden="true">${t.icon}</span><span class="tab-label">${t.label}</span>
+          <${Icon} name=${t.icon} size=${22} /><span class="tab-label">${t.label}</span>
           ${t.id === 'needed' && neededCount ? html`<span class="count">${neededCount}</span>` : null}
           ${t.id === 'basket' && live.trolley?.count ? html`<span class="count count-trolley" title="Items in your Ocado trolley">${live.trolley.count}</span>` : null}
           ${t.id === 'favourites' && onOffer ? html`<span class="count count-offer" title="Favourites on offer">${onOffer}</span>` : null}
         </a>`)}
+        ${hub ? html`<a class="hub-link" href=${hub}><${Icon} name="home" size=${16} /> All tools</a>` : null}
       </nav>
 
       <main class="main" id="main">

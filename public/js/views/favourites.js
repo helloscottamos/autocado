@@ -3,7 +3,7 @@
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 import { api, post } from '../api.js';
-import { Btn, Empty, ProductRow, Segmented, Spinner, toast, toastError, timeAgo } from '../ui.js';
+import { Btn, Empty, Icon, ProductRow, Segmented, Spinner, toast, toastError, timeAgo } from '../ui.js';
 import { DEMO_SEARCH_HINT } from './basket.js';
 
 export function FavouritesView({ state, progress }) {
@@ -68,8 +68,8 @@ export function FavouritesView({ state, progress }) {
       ` : html`
         ${favs.length ? html`<${Segmented} label="Show" value=${filter} onChange=${setFilter} options=${[{ value: 'offers', label: `On offer (${onOffer.length})` }, { value: 'all', label: `All (${favs.length})` }]} />` : null}
         ${favs.length === 0 ? html`
-          <${Empty} icon="⭐" title="No favourites yet">
-            <p>Search above and tap ☆ to favourite a product, or star products in the basket. ${state.ocado.connected ? 'Tap “Sync with Ocado” to bring in your Ocado favourites.' : ''}</p>
+          <${Empty} icon="star" title="No favourites yet">
+            <p>Search above and tap the star to favourite a product, or star products in the basket. ${state.ocado.connected ? 'Tap “Sync with Ocado” to bring in your Ocado favourites.' : ''}</p>
           <//>` : shown.length === 0 ? html`<p class="muted">None of your favourites are on offer right now.</p>` : html`
           <ul class="pick-list">
             ${shown.map(p => html`<li key=${p.productId}>

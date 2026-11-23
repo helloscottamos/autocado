@@ -4,7 +4,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useState } from 'preact/hooks';
 import { post, put, del, photoToBase64 } from '../api.js';
-import { Btn, Empty, Segmented, Sheet, toast, toastError } from '../ui.js';
+import { Btn, Empty, Icon, Segmented, Sheet, toast, toastError } from '../ui.js';
 
 export function RecipesView({ state, params, go }) {
   const [adding, setAdding] = useState(params.add === '1');
@@ -24,7 +24,7 @@ export function RecipesView({ state, params, go }) {
         <${Btn} kind="primary" onClick=${() => setAdding(true)}>+ Add recipe<//>
       </div>
 
-      ${recipes.length === 0 ? html`<${Empty} icon="📖" title="No recipes yet"><p>Add the meals you cook most often. A photo of the cookbook page is quickest.</p><//>` : html`
+      ${recipes.length === 0 ? html`<${Empty} icon="book" title="No recipes yet"><p>Add the meals you cook most often. A photo of the cookbook page is quickest.</p><//>` : html`
         <ul class="recipe-list">
           ${recipes.map(r => html`<li key=${r.id} class="recipe-card">
             <button class="recipe-card-main" onClick=${() => setEditing(r)}>
@@ -94,7 +94,7 @@ function AddRecipe({ claude, onClose, onReady }) {
   const needsClaude = ['photo', 'book'].includes(how) && !claude;
   return html`<${Sheet} title="Add a recipe" onClose=${onClose} wide>
     <${Segmented} label="How" value=${how} onChange=${setHow} options=${[
-      { value: 'photo', label: '📷 Photo' }, { value: 'text', label: 'Paste' }, { value: 'url', label: 'Web link' },
+      { value: 'photo', label: 'Photo' }, { value: 'text', label: 'Paste' }, { value: 'url', label: 'Web link' },
       { value: 'book', label: 'From a book' }, { value: 'type', label: 'Type it' },
     ]} />
 
@@ -103,14 +103,14 @@ function AddRecipe({ claude, onClose, onReady }) {
     ${how === 'photo' ? html`<div class="stack">
       <p class="muted">Take a photo of the cookbook page, or choose photos you already have (up to 4, if it runs over). Claude reads the ingredients.</p>
       <div class="btn-row">
-        <label class="btn btn-secondary file-btn">📷 Take a photo
+        <label class="btn btn-secondary file-btn"><${Icon} name="camera" size=${18} /> Take a photo
           <input type="file" accept="image/*" capture="environment" onChange=${pickPhotos} />
         </label>
-        <label class="btn btn-secondary file-btn">🖼️ Choose photos
+        <label class="btn btn-secondary file-btn"><${Icon} name="image" size=${18} /> Choose photos
           <input type="file" accept="image/*" multiple onChange=${pickPhotos} />
         </label>
       </div>
-      ${images.length ? html`<div class="previews">${images.map((img, i) => html`<div class="preview"><img src=${img.preview} alt=${`Page ${i + 1}`} /><button class="icon-btn" aria-label="Remove photo" onClick=${() => setImages(images.filter((_, j) => j !== i))}>✕</button></div>`)}</div>` : null}
+      ${images.length ? html`<div class="previews">${images.map((img, i) => html`<div class="preview"><img src=${img.preview} alt=${`Page ${i + 1}`} /><button class="icon-btn" aria-label="Remove photo" onClick=${() => setImages(images.filter((_, j) => j !== i))}><${Icon} name="close" size=${16} /></button></div>`)}</div>` : null}
       <input type="text" placeholder="Optional note, e.g. “double the garlic, skip the anchovies”" value=${hint} onInput=${e => setHint(e.currentTarget.value)} />
     </div>` : null}
 
@@ -192,7 +192,7 @@ function RecipeEditor({ recipe, onClose }) {
         <input type="number" step="any" min="0" inputmode="decimal" value=${i.quantity} onInput=${e => setIng(idx, { quantity: e.currentTarget.value })} aria-label="Quantity" />
         <input type="text" value=${i.unit} onInput=${e => setIng(idx, { unit: e.currentTarget.value })} aria-label="Unit" placeholder="g, tbsp…" />
         <input type="checkbox" checked=${!!i.pantry} onChange=${e => setIng(idx, { pantry: e.currentTarget.checked })} aria-label="Cupboard staple" />
-        <button class="icon-btn" aria-label="Remove ingredient" onClick=${() => set({ ingredients: r.ingredients.filter((_, j) => j !== idx) })}>✕</button>
+        <button class="icon-btn" aria-label="Remove ingredient" onClick=${() => set({ ingredients: r.ingredients.filter((_, j) => j !== idx) })}><${Icon} name="close" size=${18} /></button>
       </div>`)}
     </div>
     <button class="link-btn" onClick=${() => set({ ingredients: [...r.ingredients, blankRow()] })}>+ Add ingredient</button>

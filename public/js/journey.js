@@ -3,7 +3,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useState } from 'preact/hooks';
 import { api, post } from './api.js';
-import { Btn, money, toast } from './ui.js';
+import { Btn, Icon, money, toast } from './ui.js';
 
 export const OCADO_BASKET = 'https://www.ocado.com/basket';
 // The page Ocado's own "Book a slot" button opens (home delivery).
@@ -54,7 +54,7 @@ export function JourneyBar({ state, mode = 'weekly', here }) {
     <ol class="journey-steps" style=${`--n:${steps.length}`}>
       ${steps.map((s, i) => html`<li key=${s.id} class=${`journey-step ${s.status}${s.place === here ? ' here' : ''}`}>
         <a href=${stepHref(s.place, mode)} aria-current=${s.place === here ? 'page' : undefined}>
-          <span class="journey-dot" aria-hidden="true">${s.status === 'done' ? '✓' : i + 1}</span>
+          <span class="journey-dot" aria-hidden="true">${s.status === 'done' ? html`<${Icon} name="check" size=${15} />` : i + 1}</span>
           <span class="journey-label">${s.label}<span class="visually-hidden">${s.status === 'done' ? ' (done)' : s.status === 'current' ? ' (next)' : ''}</span></span>
         </a>
       </li>`)}
@@ -79,7 +79,7 @@ export function CheckoutCard({ state, trolley }) {
     <div class="btn-row">
       ${demo
         ? html`<${Btn} kind="primary" onClick=${demoCheckout}>Demo: check out on Ocado<//>`
-        : html`<a class="btn btn-primary" href=${OCADO_SLOTS} target="_blank" rel="noopener">Book a slot and check out ↗</a>`}
+        : html`<a class="btn btn-primary" href=${OCADO_SLOTS} target="_blank" rel="noopener">Book a slot and check out <${Icon} name="external" size=${17} /></a>`}
       <${Btn} kind="secondary" onClick=${ordered}>I've placed the order<//>
     </div>
   </div>`;
@@ -108,7 +108,7 @@ export function OrderedBanner({ state }) {
   if (!o || Date.now() - Date.parse(o.at) > 24 * 3600_000) return null;
   if (state.week.openShop || state.orderCheck) return null; // already onto the next shop
   return html`<div class="banner banner-done" role="status">
-    <span>✓ ${o.closedWeek ? "This week's shop" : 'Your top-up'} is ordered${o.total ? ` (${money(o.total)})` : ''}.${o.closedWeek ? ' A fresh week has started, and your Needed list carried over.' : ''}</span>
+    <span class="banner-text"><${Icon} name="done" size=${20} /> ${o.closedWeek ? "This week's shop" : 'Your top-up'} is ordered${o.total ? ` (${money(o.total)})` : ''}.${o.closedWeek ? ' A fresh week has started, and your Needed list carried over.' : ''}</span>
     <div class="btn-row">
       ${state.week.canUndo ? html`<${Btn} small kind="ghost" onClick=${() => post('/api/weeks/undo')}>Undo<//>` : null}
       <${Btn} small kind="secondary" onClick=${() => post('/api/weeks/ack')}>OK<//>
